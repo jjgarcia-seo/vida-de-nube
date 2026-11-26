@@ -1,0 +1,1487 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Vida de Nube</title>
+<meta name="description" content="Eres una nube sobre un valle enorme: bebe, crece, llueve, lanza rayos y vive las cuatro estaciones.">
+<meta name="theme-color" content="#0d181c">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya:wght@500;800&family=Alegreya+Sans:wght@400;500;700&display=swap">
+<style>
+/* Base: pantalla completa sin márgenes; deja sitio a las zonas seguras del móvil. */
+html,body{margin:0;height:100%}
+body{font:14px/1.4 system-ui,sans-serif}
+[hidden]{display:none!important}
+/* Layout: un solo lienzo a pantalla completa; el HUD flota en las esquinas como instrumentos de un cuaderno de campo. */
+:root{
+  color-scheme:dark;
+  --ink:#0d181c;          /* fondo y paneles */
+  --ink-2:#16272d;        /* panel elevado */
+  --line:#2f474d;         /* bordes */
+  --paper:#e7dcc2;        /* texto principal */
+  --paper-dim:#9aa79f;    /* texto secundario */
+  --amber:#e2a94b;        /* acento: luz de farol */
+  --water:#5fb0c0;        /* agua */
+  --rust:#b5583f;         /* aviso */
+  --display:"Alegreya",Georgia,serif;
+  --body:"Alegreya Sans","Segoe UI",system-ui,sans-serif;
+}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{background:var(--ink);color:var(--paper);font-family:var(--body);font-size:16px;overflow:hidden;
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+#game{position:relative;height:100%;overflow:hidden;background:var(--ink)}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:crosshair}
+#vig{position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(ellipse at center,transparent 45%,rgba(6,14,17,.55) 100%)}
+.hud{position:absolute;display:flex;gap:8px;pointer-events:none}
+.hud>*{pointer-events:auto}
+#tl{top:10px;left:max(16px,env(safe-area-inset-left,0px));flex-direction:column;align-items:flex-start}
+#tr{top:10px;right:max(16px,env(safe-area-inset-right,0px));flex-direction:column;align-items:flex-end}
+#bl{bottom:12px;left:max(16px,env(safe-area-inset-left,0px))}
+#br{bottom:12px;right:max(16px,env(safe-area-inset-right,0px));align-items:flex-end}
+.panel{background:rgba(13,24,28,.86);border:1px solid var(--line);border-radius:4px;padding:8px 10px}
+#stat{min-width:150px}
+#stat .row{display:flex;justify-content:space-between;gap:12px;font-size:13px;color:var(--paper-dim);
+  letter-spacing:.06em;text-transform:uppercase}
+#stat b{color:var(--paper);font-weight:700;font-variant-numeric:tabular-nums}
+#bar{height:8px;background:#0a1215;border:1px solid var(--line);margin:6px 0 5px;position:relative}
+#barf{position:absolute;inset:0 auto 0 0;width:30%;background:var(--water)}
+#bar i{position:absolute;top:-3px;bottom:-3px;left:30%;width:1px;background:var(--amber);opacity:.7}
+#zone{font-family:var(--display);font-size:17px;font-weight:500;color:var(--paper)}
+#hint{position:absolute;top:10px;left:50%;transform:translateX(-50%);max-width:min(46vw,520px);
+  font-size:14px;line-height:1.3;color:var(--paper);text-align:center;pointer-events:none;
+  background:rgba(13,24,28,.72);border-radius:4px;padding:5px 12px}
+#hint b{color:var(--amber);font-family:var(--display);font-weight:800;font-size:15px}
+#toasts{position:absolute;top:128px;right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;
+  gap:6px;align-items:center;pointer-events:none;width:min(92vw,380px)}
+.toast{background:rgba(22,39,45,.92);border:1px solid var(--line);border-left:3px solid var(--amber);border-radius:4px;padding:6px 10px;text-align:left;max-width:100%;
+  animation:tin .35s ease-out;box-shadow:0 6px 24px rgba(0,0,0,.5)}
+.toast small{display:block;color:var(--amber);font-size:10px;letter-spacing:.14em;text-transform:uppercase}
+@keyframes tin2{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}
+.toast{animation:tin2 .3s ease-out}
+.toast strong{font-family:var(--display);font-weight:800;font-size:15px}
+.toast.warn{border-left-color:var(--rust)}.toast.warn small{color:var(--rust)}
+.toast span{display:block;color:var(--paper-dim);font-size:12px;line-height:1.3}
+@keyframes tin{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.act{background:rgba(13,24,28,.9);border:1px solid var(--line);border-radius:4px;min-width:74px;padding:8px 10px;
+  display:flex;flex-direction:column;align-items:center;gap:1px;font-weight:700;font-size:15px}
+.act small{font-weight:400;font-size:11px;color:var(--paper-dim);letter-spacing:.04em}
+.act.on{background:var(--water);color:var(--ink);border-color:var(--water)}
+.act.on small{color:var(--ink)}
+.act.ready{border-color:var(--amber);color:var(--amber)}
+.act:disabled{opacity:.5;cursor:default}
+#btnAch,#btnCfg,#btnUp{font-weight:700;font-size:14px}
+#btnUp{position:relative}
+#toasts{align-items:flex-end;width:min(270px,58vw);left:auto;transform:none}
+#mis{width:230px;padding:8px 10px}
+#misHead{all:unset;cursor:pointer;display:flex;justify-content:space-between;gap:8px;width:100%;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--amber);font-weight:700}
+#misHead:focus-visible{outline:2px solid var(--amber);outline-offset:3px}
+#misList{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:7px}
+#misList li{font-size:13px;line-height:1.25;color:var(--paper)}
+#misList small{color:var(--paper-dim);font-variant-numeric:tabular-nums}
+#misList .pb{height:3px;background:#0a1215;margin-top:3px}
+#misList .pb i{display:block;height:100%;background:var(--water)}
+#misAll{overflow-y:auto;padding:4px 18px 16px}
+#misAll h3{font-family:var(--display);font-size:18px;margin:14px 0 4px;display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+#misAll h3 small{font-family:var(--body);font-size:12px;color:var(--paper-dim);font-weight:400}
+#misAll ul{list-style:none;margin:0;padding:0}
+#misAll li{display:flex;gap:10px;align-items:flex-start;padding:5px 0;font-size:14px;color:var(--paper)}
+#misAll li i{flex:none;width:11px;height:11px;margin-top:4px;border:1px solid var(--line);transform:rotate(45deg)}
+#misAll li.done i{background:var(--amber);border-color:var(--amber)}#misAll li.done span{color:var(--paper-dim);text-decoration:line-through}
+#misAll li.later span{color:var(--paper-dim)}
+#joy{position:absolute;left:50%;bottom:max(14px,env(safe-area-inset-bottom,0px));width:124px;height:124px;margin-left:-62px;border-radius:50%;
+  background:rgba(13,24,28,.45);border:1px solid var(--line);touch-action:none;cursor:grab}
+#knob{position:absolute;left:50%;top:50%;width:54px;height:54px;margin:-27px 0 0 -27px;border-radius:50%;background:rgba(231,220,194,.8);box-shadow:0 2px 8px rgba(0,0,0,.4);pointer-events:none}
+.fst{grid-column:1;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-top:8px;max-width:420px}
+#formList .fst span{grid-column:auto;line-height:1;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--paper-dim);display:grid;gap:3px}
+.fst b{display:block;height:4px;background:linear-gradient(90deg,var(--amber) calc(var(--v)*20%),#0a1215 0)}
+#btnCfg .ico{display:none}
+@media (max-width:560px){#btnCfg .ico{display:inline}}
+#btnUp.has{border-color:var(--amber);color:var(--amber)}
+#ptsBadge{position:absolute;top:-8px;right:-8px;min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:var(--amber);color:var(--ink);
+  font-size:12px;line-height:20px;text-align:center;animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{50%{transform:scale(1.18)}}
+@media (prefers-reduced-motion:reduce){#ptsBadge{animation:none}}
+#lvOwnedH{margin-top:14px}
+#lvOwned{list-style:none;margin:4px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
+#lvOwned li{display:flex;justify-content:space-between;gap:8px;background:var(--ink-2);border-radius:4px;padding:6px 10px;font-size:13px}
+#lvOwned strong{font-weight:700}#lvOwned span{color:var(--paper-dim)}
+#lvCard{max-height:100%;overflow-y:auto}
+#btnLvClose{margin-top:14px}
+.trow{display:flex;gap:8px}
+#xpbar{height:4px;background:#0a1215;margin:6px 0 4px;position:relative}
+#xpf{position:absolute;inset:0 auto 0 0;width:0;background:var(--amber)}
+#karmaTxt.good{color:#a9e0a0}#karmaTxt.bad{color:#ff8a6a}
+#btnForm{font-size:13px;color:var(--paper-dim)}#btnForm b{color:var(--paper)}
+#seasonTxt{color:var(--amber);font-weight:700}
+#lvCard{padding:22px 22px 20px;gap:4px}
+#lvTitle{font-family:var(--display);font-weight:800;font-size:32px;margin:0}
+#lvSub{margin:0;color:var(--paper-dim);font-size:14px}
+#lvCards{display:grid;gap:10px;margin-top:12px}
+.upc{text-align:left;background:var(--ink-2);border:1px solid var(--line);border-radius:4px;padding:12px 14px}
+.upc:hover{border-color:var(--amber)}
+.upc strong{display:block;font-family:var(--display);font-weight:800;font-size:20px;color:var(--amber)}
+.upc span{font-size:14px;color:var(--paper-dim);line-height:1.3}
+.upc small{float:right;font-size:12px;color:var(--paper-dim);letter-spacing:.06em;text-transform:uppercase}
+#formList{overflow-y:auto;padding:6px 18px 12px;margin:0;list-style:none}
+#formList li{display:grid;grid-template-columns:1fr auto;gap:2px 12px;align-items:center;padding:10px 0;border-bottom:1px solid #1b2c31}
+#formList strong{font-family:var(--display);font-size:18px;font-weight:800}
+#formList span{grid-column:1;font-size:14px;color:var(--paper-dim);line-height:1.3}
+#formList li.locked strong{color:var(--paper-dim)}
+#formList button{grid-column:2;grid-row:1/3;background:none;border:1px solid var(--amber);color:var(--amber);border-radius:4px;padding:6px 12px;font-weight:700}
+#formList button:disabled{border-color:var(--line);color:var(--paper-dim)}
+#cfgBody{padding:14px 18px 20px;display:grid;gap:14px}
+#cfgBody label{display:grid;gap:6px;font-size:14px;color:var(--paper-dim)}
+#cfgBody input[type=range]{width:100%;accent-color:var(--amber)}
+#cfgBody .chk{display:flex;gap:10px;align-items:center;color:var(--paper)}
+#cfgBody .chk input{width:18px;height:18px;accent-color:var(--amber)}
+#cfgBody select{font:inherit;color:var(--paper);background:var(--ink-2);border:1px solid var(--line);border-radius:4px;padding:7px 8px}
+#cfgBody{overflow-y:auto}
+#btnAch b{color:var(--amber);font-variant-numeric:tabular-nums}
+#skyBox{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--paper-dim)}
+#skyBox .row{display:flex;align-items:center;gap:7px;justify-content:flex-end}
+#skyBox b{color:var(--paper);font-variant-numeric:tabular-nums}
+#sun{width:11px;height:11px;border-radius:50%;background:var(--amber)}
+#sun.moon{background:var(--paper);box-shadow:inset -4px 0 0 var(--ink-2)}
+#windArrow{color:var(--water);transition:transform .4s}
+#windLbl.gale{color:var(--rust);font-weight:700}
+#mini{display:block;width:124px;height:91px;border:1px solid var(--line);border-radius:4px;background:var(--ink)}
+.overlay{position:absolute;inset:0;background:rgba(8,16,19,.78);display:flex;align-items:center;justify-content:center;
+  padding:16px max(16px,env(safe-area-inset-right,0px)) 16px max(16px,env(safe-area-inset-left,0px))}
+.card{background:var(--ink);border:1px solid var(--line);border-radius:6px;max-width:560px;width:100%;
+  max-height:100%;display:flex;flex-direction:column}
+#intro .card{padding:26px 26px 22px;gap:12px}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(34px,7vw,52px);line-height:1;margin:0;text-wrap:balance}
+.eyebrow{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--amber);margin:0}
+#intro p{margin:0;line-height:1.45;color:var(--paper-dim);max-width:52ch}
+#intro p b{color:var(--paper)}
+.cta{align-self:flex-start;margin-top:6px;background:var(--amber);color:var(--ink);border:0;border-radius:4px;
+  padding:10px 18px;font-weight:700;font-size:16px}
+.card header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:16px 18px 10px;
+  border-bottom:1px solid var(--line)}
+.card header h2{font-family:var(--display);font-weight:800;font-size:24px;margin:0}
+.card header button{background:none;border:1px solid var(--line);border-radius:4px;padding:4px 10px;font-size:14px}
+#achList{overflow-y:auto;padding:6px 18px 4px;margin:0;list-style:none}
+#achList li{display:grid;grid-template-columns:22px 1fr;gap:2px 8px;padding:8px 0;border-bottom:1px solid #1b2c31}
+#achList li i{grid-row:1/3;width:14px;height:14px;margin-top:4px;border:1px solid var(--line);transform:rotate(45deg)}
+#achList li.done i{background:var(--amber);border-color:var(--amber)}
+#achList strong{font-family:var(--display);font-size:17px;font-weight:800;color:var(--paper-dim)}
+#achList li.done strong{color:var(--paper)}
+#achList span{font-size:14px;color:var(--paper-dim);line-height:1.3}
+.card footer{padding:10px 18px 14px;display:flex;justify-content:space-between;align-items:center;gap:12px;
+  font-size:13px;color:var(--paper-dim);border-top:1px solid var(--line)}
+.card footer button{background:none;border:1px solid var(--line);border-radius:4px;padding:4px 10px;font-size:13px;
+  color:var(--paper-dim);white-space:nowrap}
+.card footer button.sure{border-color:var(--rust);color:var(--rust)}
+@media (max-width:560px){
+  #hint{top:auto;bottom:128px;max-width:92vw;width:92vw;font-size:13px}
+  #toasts{top:124px;width:min(220px,54vw)}
+  #mis{width:150px;padding:6px 8px}
+  #misList li:nth-child(n+2){display:none}
+  #misList li{font-size:12px}
+  #joy{bottom:78px;width:112px;height:112px;margin-left:-56px}
+  #tr .trow{gap:6px}
+  #btnUp,#btnCfg,#btnAch{font-size:12px;padding:6px 8px}
+  #btnCfg .lbl{display:none}
+  #mini{width:92px;height:67px}
+  .act{min-width:56px;padding:8px 5px;font-size:13px}
+  #br{gap:6px}
+  #stat{min-width:0;width:122px}
+  #stat .row{flex-wrap:wrap;gap:0 10px;font-size:12px}
+}
+</style>
+</head>
+<body>
+
+<div id="game">
+  <canvas id="cv" aria-label="Mapa del juego"></canvas>
+  <div id="vig"></div>
+
+  <div class="hud" id="tl">
+    <div class="panel" id="stat">
+      <div id="zone">Pradera</div>
+      <div id="bar"><div id="barf"></div><i></i></div>
+      <div class="row"><span>Agua <b id="wTxt">30</b></span><span>Tamaño <b id="mTxt">1</b></span></div>
+      <div id="xpbar"><div id="xpf"></div></div>
+      <div class="row"><span>Nivel <b id="lvTxt">1</b></span><span id="karmaTxt">Nube corriente</span></div>
+    </div>
+    <button class="panel" id="btnForm" type="button">Forma <b id="formTxt">Cúmulo</b></button>
+    <div class="panel" id="mis"><button id="misHead" type="button" aria-label="Ver todas las misiones"><span id="misCap">Capítulo 1</span><span aria-hidden="true">›</span></button><ul id="misList"></ul></div>
+  </div>
+  <div class="hud" id="tr">
+    <div class="trow"><button class="panel" id="btnUp" type="button">Mejoras <b id="ptsBadge" hidden>1</b></button><button class="panel" id="btnCfg" type="button" aria-label="Ajustes"><span class="lbl">Ajustes</span><span class="ico" aria-hidden="true">⚙</span></button><button class="panel" id="btnAch" type="button">Logros <b id="achCount">0</b></button></div>
+    <div class="panel" id="skyBox">
+      <div class="row"><span id="seasonTxt">Primavera</span><i id="sun"></i><b id="clock">08:00</b></div>
+      <div class="row"><svg id="windArrow" viewBox="-10 -10 20 20" width="18" height="18" aria-hidden="true"><path d="M9 0L-6 -6L-2 0L-6 6Z" fill="currentColor"/></svg><span><span id="windLbl">Brisa</span> <b id="windTxt">0 km/h</b></span></div>
+    </div>
+  </div>
+  <div id="hint" hidden></div>
+  <div id="toasts" aria-live="polite"></div>
+  <div class="hud" id="bl"><canvas id="mini" width="248" height="182" aria-hidden="true"></canvas></div>
+  <div class="hud" id="br">
+    <button class="act" id="btnTor" type="button" hidden>Tornado<small id="torSub">tamaño 12</small></button>
+    <button class="act" id="btnRay" type="button" hidden>Rayo<small id="raySub">tamaño 6</small></button>
+    <button class="act" id="btnDash" type="button" hidden>Ráfaga<small id="dashSub">mayús</small></button>
+    <button class="act" id="btnRain" type="button">Llover<small id="rainSub">espacio</small></button>
+  </div>
+
+  <div class="overlay" id="intro">
+    <div class="card">
+      <p class="eyebrow">Versión 6 · misiones y joystick</p>
+      <h1>Vida de Nube</h1>
+      <p>Eres una nube pequeña sobre un valle enorme. <b>Toca el mapa o usa el joystick</b> para flotar (se cambia en Ajustes). Arriba a la izquierda tienes siempre tus <b>misiones</b>: ellas te dicen qué hacer.</p>
+      <p><b>Bebe</b> sobre el lago, el río o el mar. <b>Crece</b> fundiéndote con otras nubes. <b>Llueve</b> donde quieras y mira qué pasa abajo. La sombra en el suelo marca dónde cae tu lluvia.</p>
+      <p><b>Sube de nivel</b> para aprender rayos, ráfagas y tornados, y descubre las siete formas de nube. El sol te evapora: sin agua encoges. A partir del nivel 3 hay <b>nubes rivales</b>: la grande se come a la pequeña.</p>
+      <button class="cta" id="btnStart" type="button">Empezar a flotar</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="lvPanel" hidden>
+    <div class="card" id="lvCard">
+      <p class="eyebrow">Mejoras</p>
+      <h2 id="lvTitle">Nivel 2</h2>
+      <p id="lvSub">Elige una mejora. No se puede deshacer.</p>
+      <div id="lvCards"></div>
+      <p class="eyebrow" id="lvOwnedH">Ya tienes</p>
+      <ul id="lvOwned"></ul>
+      <button class="cta" id="btnLvClose" type="button">Volver al cielo</button>
+    </div>
+  </div>
+  <div class="overlay" id="formPanel" hidden>
+    <div class="card">
+      <header><h2>Nubario</h2><button id="btnFormClose" type="button">Cerrar</button></header>
+      <ul id="formList"></ul>
+    </div>
+  </div>
+
+  <div id="joy" hidden><div id="knob"></div></div>
+  <div class="overlay" id="misPanel" hidden>
+    <div class="card">
+      <header><h2>Misiones</h2><button id="btnMisClose" type="button">Cerrar</button></header>
+      <div id="misAll"></div>
+    </div>
+  </div>
+
+  <div class="overlay" id="cfgPanel" hidden>
+    <div class="card">
+      <header><h2>Ajustes</h2><button id="btnCfgClose" type="button">Cerrar</button></header>
+      <div id="cfgBody">
+        <label for="sVol">Volumen general<input type="range" id="sVol" min="0" max="100"></label>
+        <label for="sMus">Música<input type="range" id="sMus" min="0" max="100"></label>
+        <label for="sAmb">Ambiente: viento, lluvia, mar<input type="range" id="sAmb" min="0" max="100"></label>
+        <label for="sSfx">Efectos: truenos, avisos<input type="range" id="sSfx" min="0" max="100"></label>
+        <label for="sShake">Temblor de cámara<input type="range" id="sShake" min="0" max="100"></label>
+        <label class="chk" for="cCalm"><input type="checkbox" id="cCalm">Reducir destellos de los rayos</label>
+        <label for="selCtrl">Movimiento<select id="selCtrl"><option value="tap">Tocar o hacer clic en el mapa</option><option value="joy">Joystick en pantalla</option></select></label>
+        <label for="sCam">Distancia de cámara (también con la rueda del ratón)<input type="range" id="sCam" min="0" max="100"></label>
+        <label class="chk" for="cNotes"><input type="checkbox" id="cNotes">Avisos de logros mientras juegas</label>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="achPanel" hidden>
+    <div class="card">
+      <header><h2>Logros <span id="achCount2" style="color:var(--amber)"></span></h2><button id="btnClose" type="button">Cerrar</button></header>
+      <ul id="achList"></ul>
+      <footer><span>Tu progreso se guarda en este dispositivo.</span><button id="btnReset" type="button">Empezar de cero</button></footer>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+const W=10400,H=7600,S=0.5,TAU=Math.PI*2,CELL=140,DAYLEN=330;
+function mkrng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const R=mkrng(20261113);
+const rr=(a,b)=>a+R()*(b-a);
+const rnd=(a,b)=>a+Math.random()*(b-a);
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+const lerp=(a,b,t)=>a+(b-a)*t;
+const dist=(ax,ay,bx,by)=>Math.hypot(ax-bx,ay-by);
+const pcache=new Map();
+function parse(c){let v=pcache.get(c);if(v)return v;if(c[0]==="#"){const n=parseInt(c.slice(1),16);v=[n>>16,n>>8&255,n&255]}else v=c.match(/\d+/g).map(Number);if(pcache.size<600)pcache.set(c,v);return v}
+function mix(c1,c2,t){t=clamp(t,0,1);const a=parse(c1),b=parse(c2);return "rgb("+Math.round(lerp(a[0],b[0],t))+","+Math.round(lerp(a[1],b[1],t))+","+Math.round(lerp(a[2],b[2],t))+")"}
+
+/* ---------- Geografía ---------- */
+const LAKE={x:4700,y:3300,r:560};
+const PONDS=[{x:1500,y:2500,r:130},{x:8050,y:1850,r:170}];
+const MOUNT={x:8100,y:1500,rx:1700,ry:1150},PEAK={x:8350,y:1200};
+const FORESTS=[{x:2200,y:1700,rx:1650,ry:1200},{x:6400,y:5550,rx:650,ry:420}];
+const FARM={x:1200,y:4100,w:1800,h:1400},PASTURE={x:1300,y:5020,w:1100,h:380};
+const VILLAGE={x:6300,y:4300,r:480},CHURCH={x:6300,y:4300};
+const PORT={x:2300,y:6100,r:340};
+const CITY={x:7400,y:4700,w:1960,h:1260};
+const ISL={x:8900,y:7230,r:150},WOOD={x:8955,y:7205},BARREL={x:8855,y:7265};
+const LIGHT={x:650,y:6300},CAMP={x:3050,y:2250},SHEEP={x:5500,y:1500,w:800,h:500};
+const MILL={x:2800,y:5000},TURB=[[3700,700],[3950,830],[4200,700],[4450,840],[4700,720]];
+const RIV_A=[[7300,2150],[6700,2500],[6000,2700],[5200,3080]];
+const RIV_B=[[4480,3780],[4250,4500],[4550,5200],[4200,5800],[4050,6520]];
+const coastY=x=>6350+70*Math.sin(x/520)+40*Math.sin(x/190+2);
+const lakeR=a=>LAKE.r*(1+.18*Math.sin(3*a+1)+.1*Math.sin(5*a));
+const islR=a=>ISL.r*(1+.15*Math.sin(3*a+2)+.08*Math.sin(5*a));
+function segD(px,py,ax,ay,bx,by){const dx=bx-ax,dy=by-ay;const t=clamp(((px-ax)*dx+(py-ay)*dy)/(dx*dx+dy*dy),0,1);return dist(px,py,ax+dx*t,ay+dy*t)}
+function polyD(px,py,P){let m=1e9;for(let i=0;i<P.length-1;i++)m=Math.min(m,segD(px,py,P[i][0],P[i][1],P[i+1][0],P[i+1][1]));return m}
+const inEll=(x,y,e)=>((x-e.x)/e.rx)**2+((y-e.y)/e.ry)**2<1;
+const inRect=(x,y,r)=>x>r.x&&x<r.x+r.w&&y>r.y&&y<r.y+r.h;
+const inForest=(x,y)=>inEll(x,y,FORESTS[0])||inEll(x,y,FORESTS[1]);
+function zoneAt(x,y){
+  if(y>coastY(x)){if(dist(x,y,ISL.x,ISL.y)<islR(Math.atan2(y-ISL.y,x-ISL.x)))return "isla";return "mar"}
+  if(dist(x,y,LAKE.x,LAKE.y)<lakeR(Math.atan2(y-LAKE.y,x-LAKE.x)))return "lago";
+  for(const p of PONDS)if(dist(x,y,p.x,p.y)<p.r)return "lago";
+  if(polyD(x,y,RIV_A)<42||polyD(x,y,RIV_B)<42)return "rio";
+  if(x>CITY.x-15&&x<CITY.x+CITY.w+15&&y>CITY.y-15&&y<CITY.y+CITY.h+15)return "ciudad";
+  if(dist(x,y,VILLAGE.x,VILLAGE.y)<VILLAGE.r)return "pueblo";
+  if(dist(x,y,PORT.x,PORT.y)<PORT.r)return "puerto";
+  if(inRect(x,y,FARM))return "granja";
+  if(inEll(x,y,MOUNT))return "montana";
+  if(inForest(x,y))return "bosque";
+  return "prado";
+}
+const ZNAME={mar:"Mar",isla:"Isla perdida",lago:"Lago",rio:"Río",ciudad:"Ciudad",pueblo:"Pueblo",puerto:"Puerto pesquero",granja:"Granja",montana:"Montañas",bosque:"Bosque",prado:"Pradera"};
+const WATER={mar:1,lago:1,rio:1};
+const EXPL=["mar","lago","rio","ciudad","pueblo","puerto","granja","montana","bosque"];
+
+/* ---------- Ciudad: tipos de manzana ---------- */
+const CT={};
+(function(){const set=(c,r,t)=>CT[c+","+r]=t;
+  set(0,0,"fac");set(1,0,"_");set(13,8,"power");set(2,2,"hosp");set(9,6,"school");set(10,6,"yard");
+  set(11,4,"stad");set(12,4,"_");set(11,5,"_");set(12,5,"_");
+  set(5,3,"park");set(6,3,"_");set(5,4,"_");set(6,4,"_");set(11,1,"park1");set(3,5,"plaza");set(8,1,"parking");set(2,7,"park1");
+  for(const c of [4,5,6,7,8])set(c,2,"shop");for(const c of [3,4,5,6,7])set(c,6,"shop");})();
+const cell=(c,r,cw,rh)=>({x:CITY.x+c*CELL+15,y:CITY.y+r*CELL+15,w:(cw||1)*CELL-30,h:(rh||1)*CELL-30});
+const PARK=cell(5,3,2,2),STAD=cell(11,4,2,2),YARD=cell(10,6),POWER=cell(13,8);
+const CHIM={x:CITY.x+205,y:CITY.y+50};
+
+/* ---------- Suelo por trozos ---------- */
+function mkPatches(n,bb,cols,test,a,s0,s1){const out=[];for(let i=0;i<n;i++){const x=rr(bb[0],bb[2]),y=rr(bb[1],bb[3]);if(test&&!test(x,y))continue;
+  const s=rr(s0||40,s1||150),rot=R()*TAU,k=3+((R()*3)|0),p=[];for(let j=0;j<k;j++){const an=rot+j/k*TAU,d=s*rr(.5,1);p.push(x+Math.cos(an)*d,y+Math.sin(an)*d)}
+  out.push({x,y,s,c:cols[(R()*cols.length)|0],p})}out.a=a||.55;return out}
+const ALL=[0,0,W,H],ebb=e=>[e.x-e.rx,e.y-e.ry,e.x+e.rx,e.y+e.ry];
+const PA_base=mkPatches(10000,ALL,["#48654f","#3f5a48","#4d6a50","#55704f","#3b5546"]);
+const PA_for=FORESTS.map(f=>mkPatches(Math.round(f.rx*f.ry/280),ebb(f),["#27443a","#31503f","#2a473a"],(x,y)=>inEll(x,y,f)));
+const PA_mnt=mkPatches(7000,ebb(MOUNT),["#666a6c","#515559","#5f6466","#4b5054"],(x,y)=>inEll(x,y,MOUNT),.7);
+const PA_farm=mkPatches(1300,[FARM.x,FARM.y,FARM.x+FARM.w,FARM.y+FARM.h],["#5c6f4c","#526546"],null,.55,30,90);
+const PA_sea=mkPatches(2600,[0,6200,W,H],["#1d4250","#193a47"],(x,y)=>y>coastY(x)+70,.5);
+function drawPatches(g,arr,b){g.globalAlpha=arr.a;for(const q of arr){if(q.x+q.s<b[0]||q.x-q.s>b[2]||q.y+q.s<b[1]||q.y-q.s>b[3])continue;
+  g.fillStyle=q.c;g.beginPath();for(let j=0;j<q.p.length;j+=2)g.lineTo(q.p[j],q.p[j+1]);g.closePath();g.fill()}g.globalAlpha=1}
+function paint(g,b,noIsl){
+  g.fillStyle="#44604c";g.fillRect(b[0],b[1],b[2]-b[0],b[3]-b[1]);
+  function blob(e,sc,wob,col){g.fillStyle=col;g.beginPath();for(let i=0;i<=64;i++){const a=i/64*TAU,w=1+wob*Math.sin(a*5+e.x)+wob*.6*Math.sin(a*9);
+    g.lineTo(e.x+Math.cos(a)*e.rx*sc*w,e.y+Math.sin(a)*e.ry*sc*w)}g.closePath();g.fill()}
+  const circ=(o,sc,col)=>blob({x:o.x,y:o.y,rx:o.r,ry:o.r},sc,.05,col);
+  drawPatches(g,PA_base,b);
+  FORESTS.forEach((f,i)=>{blob(f,1.05,.05,"#36533f");blob(f,1,.05,"#2c4a3d");drawPatches(g,PA_for[i],b)});
+  blob(MOUNT,1.08,.06,"#4d5d52");blob(MOUNT,1,.06,"#5a5f62");drawPatches(g,PA_mnt,b);
+  g.fillStyle="#52704f";g.fillRect(SHEEP.x,SHEEP.y,SHEEP.w,SHEEP.h);g.strokeStyle="#7a6444";g.lineWidth=5;g.strokeRect(SHEEP.x,SHEEP.y,SHEEP.w,SHEEP.h);
+  g.fillStyle="#56694a";g.fillRect(FARM.x,FARM.y,FARM.w,FARM.h);drawPatches(g,PA_farm,b);
+  g.strokeStyle="#7a6444";g.lineWidth=5;g.strokeRect(PASTURE.x,PASTURE.y,PASTURE.w,PASTURE.h);
+  circ(VILLAGE,.95,"#52684f");circ(PORT,.9,"#5d6c54");circ({x:CAMP.x,y:CAMP.y,r:130},1,"#4a6046");
+  blob({x:4200,y:770,rx:700,ry:260},1,.05,"#4f6c50");
+  // costa y mar
+  function coast(off,col){g.fillStyle=col;g.beginPath();g.moveTo(0,H);for(let x=0;x<=W;x+=40)g.lineTo(x,coastY(x)+off);g.lineTo(W,H);g.closePath();g.fill()}
+  coast(-50,"#a8936a");coast(-16,"#c0ab7e");coast(0,"#2b5a66");coast(30,"#1f4553");coast(140,"#1b3d4b");
+  drawPatches(g,PA_sea,b);
+  if(!noIsl){const isl=(sc,col)=>{g.fillStyle=col;g.beginPath();for(let i=0;i<=48;i++){const a=i/48*TAU;g.lineTo(ISL.x+Math.cos(a)*islR(a)*sc,ISL.y+Math.sin(a)*islR(a)*sc)}g.closePath();g.fill()};
+    isl(1.5,"#1f4553");isl(1.25,"#2b5a66");isl(1,"#c0ab7e");isl(.85,"#b39d70");isl(.5,"#5a7a52");
+    g.fillStyle="#5d564a";g.font="800 34px sans-serif";g.textAlign="center";g.fillText("S O S",ISL.x-10,ISL.y+105)}
+  // lago y charcas
+  function lake(sc,col){g.fillStyle=col;g.beginPath();for(let i=0;i<=72;i++){const a=i/72*TAU;g.lineTo(LAKE.x+Math.cos(a)*lakeR(a)*sc,LAKE.y+Math.sin(a)*lakeR(a)*sc)}g.closePath();g.fill()}
+  lake(1.06,"#8d8962");lake(1,"#2b5a66");lake(.94,"#1f4553");lake(.6,"#1b3d4b");
+  for(const p of PONDS){g.fillStyle="#8d8962";g.beginPath();g.arc(p.x,p.y,p.r+12,0,TAU);g.fill();g.fillStyle="#1f4553";g.beginPath();g.arc(p.x,p.y,p.r,0,TAU);g.fill();
+    g.fillStyle="#1b3d4b";g.beginPath();g.arc(p.x+8,p.y+6,p.r*.55,0,TAU);g.fill()}
+  function line(P,w,col,curve){g.strokeStyle=col;g.lineWidth=w;g.lineCap="round";g.lineJoin="round";g.beginPath();g.moveTo(P[0][0],P[0][1]);
+    if(curve)for(let i=1;i<P.length-1;i++){const mx=(P[i][0]+P[i+1][0])/2,my=(P[i][1]+P[i+1][1])/2;g.quadraticCurveTo(P[i][0],P[i][1],mx,my)}
+    else for(let i=1;i<P.length-1;i++)g.lineTo(P[i][0],P[i][1]);
+    g.lineTo(P[P.length-1][0],P[P.length-1][1]);g.stroke()}
+  for(const P of [RIV_A,RIV_B]){line(P,96,"#7f8660",1);line(P,72,"#1f4553",1);line(P,28,"#2b5a66",1)}
+  const roads=[[[3000,4700],[4336,4700],[5830,4380]],[[6760,4450],[7385,4900]],[[6300,3830],[5700,3650],[5230,3600]],[[2300,5800],[2300,5500]],[[2760,4100],[2900,3300],[3050,2380]],[[6300,3830],[6050,2100],[5900,2000]]];
+  for(const P of roads)line(P,16,"#9a8a66");
+  g.fillStyle="#6b4f37";g.fillRect(4270,4680,132,40);
+  g.fillRect(PORT.x-13,coastY(PORT.x)-40,26,230);g.fillRect(PORT.x-70,coastY(PORT.x)+164,140,24);
+  // ciudad
+  g.fillStyle="#3d4549";g.fillRect(CITY.x-15,CITY.y-15,CITY.w+30,CITY.h+30);
+  g.strokeStyle="#5b6462";g.lineWidth=2;g.setLineDash([14,14]);g.beginPath();
+  for(let i=0;i<=14;i++){g.moveTo(CITY.x+i*CELL,CITY.y-15);g.lineTo(CITY.x+i*CELL,CITY.y+CITY.h+15)}
+  for(let j=0;j<=9;j++){g.moveTo(CITY.x-15,CITY.y+j*CELL);g.lineTo(CITY.x+CITY.w+15,CITY.y+j*CELL)}g.stroke();g.setLineDash([]);
+  for(let c=0;c<14;c++)for(let r=0;r<9;r++){const t=CT[c+","+r]||"b",q=cell(c,r);if(t==="_")continue;
+    if(q.x>b[2]+300||q.x+400<b[0]||q.y>b[3]+300||q.y+400<b[1])continue;
+    if(t==="park"){const k=PARK;g.fillStyle="#4c7050";g.fillRect(k.x,k.y,k.w,k.h);g.strokeStyle="#a39572";g.lineWidth=10;g.beginPath();g.moveTo(k.x,k.y);g.lineTo(k.x+k.w,k.y+k.h);g.moveTo(k.x+k.w,k.y);g.lineTo(k.x,k.y+k.h);g.stroke();
+      g.fillStyle="#a39572";g.beginPath();g.arc(k.x+k.w/2,k.y+k.h/2,46,0,TAU);g.fill();g.fillStyle="#2b5a66";g.beginPath();g.arc(k.x+k.w/2,k.y+k.h/2,34,0,TAU);g.fill()}
+    else if(t==="park1"){g.fillStyle="#4c7050";g.fillRect(q.x,q.y,q.w,q.h);g.fillStyle="#a39572";g.beginPath();g.arc(q.x+55,q.y+55,22,0,TAU);g.fill();g.fillStyle="#5fb0c0";g.beginPath();g.arc(q.x+55,q.y+55,12,0,TAU);g.fill()}
+    else if(t==="stad"){const k=STAD;g.fillStyle="#70767a";g.fillRect(k.x,k.y,k.w,k.h);g.fillStyle="#8a8f90";g.fillRect(k.x+12,k.y+12,k.w-24,k.h-24);
+      const px=k.x+40,py=k.y+52,pw=k.w-80,ph=k.h-104;for(let i=0;i<6;i++){g.fillStyle=i%2?"#4f8452":"#5a9159";g.fillRect(px+i*pw/6,py,pw/6+1,ph)}
+      g.strokeStyle="#dfe6dc";g.lineWidth=2.5;g.strokeRect(px+4,py+4,pw-8,ph-8);g.beginPath();g.moveTo(px+pw/2,py+4);g.lineTo(px+pw/2,py+ph-4);g.stroke();g.beginPath();g.arc(px+pw/2,py+ph/2,20,0,TAU);g.stroke()}
+    else if(t==="plaza"){g.fillStyle="#8d8774";g.fillRect(q.x,q.y,q.w,q.h);const cs=["#b5583f","#d9a441","#5fb0c0","#7d8f5a","#a06a8c","#c7b8a0"];
+      for(let i=0;i<6;i++){const sx=q.x+10+(i%3)*34,sy=q.y+16+((i/3)|0)*52;g.fillStyle=cs[i];g.fillRect(sx,sy,26,20);g.fillStyle="rgba(255,255,255,.55)";g.fillRect(sx+6,sy,5,20);g.fillRect(sx+16,sy,5,20)}}
+    else if(t==="parking"){g.fillStyle="#4a5154";g.fillRect(q.x,q.y,q.w,q.h);g.strokeStyle="#b9bcb4";g.lineWidth=1.5;const cs=["#b5583f","#c7c2b4","#3f5f78","#2b2f33","#d9a441"];
+      for(let i=0;i<7;i++)for(let j=0;j<2;j++){const sx=q.x+6+i*14.5,sy=q.y+8+j*56;g.strokeRect(sx,sy,14.5,36);if((i*3+j*5)%4){g.fillStyle=cs[(i+j*2)%5];g.fillRect(sx+2.5,sy+5,9.5,26)}}}
+    else if(t==="yard"){g.fillStyle="#9c8d69";g.fillRect(q.x-30,q.y,q.w+30,q.h);g.strokeStyle="#e4dcc4";g.lineWidth=2;g.strokeRect(q.x+12,q.y+22,q.w-24,q.h-44);g.beginPath();g.arc(q.x+q.w/2,q.y+q.h/2,14,0,TAU);g.stroke()}
+    else if(t==="power"){g.fillStyle="#5d5c55";g.fillRect(q.x,q.y,q.w,q.h);g.strokeStyle="#c9a441";g.lineWidth=3;g.setLineDash([8,6]);g.strokeRect(q.x+3,q.y+3,q.w-6,q.h-6);g.setLineDash([])}
+    else if(t==="fac"){g.fillStyle="#4e4a47";g.fillRect(q.x,q.y,q.w+CELL,q.h)}
+    else{g.fillStyle="#59615f";g.fillRect(q.x,q.y,q.w,q.h);if(t==="hosp"){g.strokeStyle="#e4dcc4";g.lineWidth=2;g.beginPath();g.arc(q.x+84,q.y+88,15,0,TAU);g.stroke();g.fillStyle="#e4dcc4";g.font="700 16px sans-serif";g.textAlign="center";g.fillText("H",q.x+84,q.y+94)}}}
+}
+const CH=1040,chunks=new Map();let frameN=0,genBudget=14;
+function getChunk(cx,cy){const k=cx+","+cy;let c=chunks.get(k);
+  if(!c){if(genBudget<=0)return null;genBudget--;const cvs=document.createElement("canvas");cvs.width=cvs.height=CH*S;const g=cvs.getContext("2d");
+    g.scale(S,S);g.translate(-cx*CH,-cy*CH);paint(g,[cx*CH,cy*CH,cx*CH+CH,cy*CH+CH]);c={cvs,u:0};chunks.set(k,c);
+    if(chunks.size>44){let ok=null,ou=1e12;for(const [kk,v] of chunks)if(v.u<ou){ou=v.u;ok=kk}chunks.delete(ok)}}
+  c.u=frameN;return c}
+
+/* ---------- Entidades ---------- */
+const trees=[],houses=[],blds=[],peaks=[],people=[],kids=[],dogs=[],cows=[],sheep=[],deer=[],ducks=[],fields=[],clouds=[],cars=[],boats=[],moored=[],gulls=[],flocks=[],flies=[],oro=[];
+function pick(o){const h=o.home;
+  if(h.c){const a=Math.random()*TAU,d=Math.sqrt(Math.random())*h.r;o.tx=h.x+Math.cos(a)*d;o.ty=h.y+Math.sin(a)*d}
+  else if(h.grid){if(Math.random()<.5){o.tx=h.x+Math.round(Math.random()*14)*CELL;o.ty=h.y+Math.random()*h.h}else{o.tx=h.x+Math.random()*h.w;o.ty=h.y+Math.round(Math.random()*9)*CELL}}
+  else{o.tx=h.x+Math.random()*h.w;o.ty=h.y+Math.random()*h.h}}
+const ucol=["#b5583f","#d9a441","#5fb0c0","#c7b8a0","#7d8f5a","#a06a8c"];
+function walker(arr,home,sp,extra){const o=Object.assign({home,sp,x:0,y:0,tx:0,ty:0,wait:R()*4,wet:0,ever:0,ph:R()*TAU,ang:0,uc:ucol[(R()*ucol.length)|0]},extra||{});
+  pick(o);o.x=o.tx;o.y=o.ty;pick(o);arr.push(o);return o}
+let castaway=null;
+(function gen(){
+  const addTree=(x,y,r)=>trees.push({x,y,r,r0:r,st:0,fire:0,hits:0,rot:R()*TAU,wet:0,rg:0,dead:0,nb:[]});
+  let n=0;const F0=FORESTS[0],F1=FORESTS[1];
+  while(n<2500){const x=F0.x+rr(-1,1)*F0.rx,y=F0.y+rr(-1,1)*F0.ry;if(inEll(x,y,F0)&&dist(x,y,PONDS[0].x,PONDS[0].y)>150&&dist(x,y,CAMP.x,CAMP.y)>120){addTree(x,y,rr(16,30));n++}}
+  n=0;while(n<430){const x=F1.x+rr(-1,1)*F1.rx,y=F1.y+rr(-1,1)*F1.ry;if(inEll(x,y,F1)){addTree(x,y,rr(15,26));n++}}
+  n=0;while(n<460){const x=R()*W,y=R()*H;if(zoneAt(x,y)==="prado"&&polyD(x,y,RIV_A)>90&&polyD(x,y,RIV_B)>90&&!inRect(x,y,SHEEP)&&y<coastY(x)-70){addTree(x,y,rr(14,24));n++}}
+  n=0;while(n<20){const x=rr(PARK.x+12,PARK.x+PARK.w-12),y=rr(PARK.y+12,PARK.y+PARK.h-12);if(dist(x,y,PARK.x+PARK.w/2,PARK.y+PARK.h/2)>62){addTree(x,y,rr(11,16));n++}}
+  for(const k of ["11,1","2,7"]){const [c,r]=k.split(",").map(Number),q=cell(c,r);for(let i=0;i<5;i++){const a=i/5*TAU;addTree(q.x+55+Math.cos(a)*40,q.y+55+Math.sin(a)*40,11)}}
+  n=0;while(n<16){const a=R()*TAU,d=rr(150,440);addTree(VILLAGE.x+Math.cos(a)*d,VILLAGE.y+Math.sin(a)*d,rr(12,18));n++}
+  trees.sort((a,b)=>a.y-b.y);
+  const grid=new Map(),GK=90;trees.forEach(t=>{const k=((t.x/GK)|0)+","+((t.y/GK)|0);(grid.get(k)||grid.set(k,[]).get(k)).push(t)});
+  for(const t of trees){const gx=(t.x/GK)|0,gy=(t.y/GK)|0;for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++){const l=grid.get((gx+i)+","+(gy+j));if(l)for(const o of l)if(o!==t&&dist(o.x,o.y,t.x,t.y)<86)t.nb.push(o)}}
+  for(let i=0;i<260;i++){const f=R()<.85?F0:F1;const a=R()*TAU,d=Math.sqrt(R());flies.push({x:f.x+Math.cos(a)*d*f.rx,y:f.y+Math.sin(a)*d*f.ry,ph:R()*TAU})}
+  const roofs=["#a8553f","#96503f","#8b5a45","#b0664a","#7d5346"];
+  const addHouse=(x,y,o)=>houses.push(Object.assign({x,y,w:rr(46,66),h:rr(36,48),rot:rr(-.5,.5),c:roofs[(R()*roofs.length)|0]},o||{}));
+  let tries=0;n=0;while(n<27&&tries++<4000){const a=R()*TAU,d=rr(120,430),x=VILLAGE.x+Math.cos(a)*d,y=VILLAGE.y+Math.sin(a)*d;
+    if(houses.every(h=>dist(h.x,h.y,x,y)>100)&&trees.every(t=>t.r>18||dist(t.x,t.y,x,y)>40)){addHouse(x,y);n++}}
+  tries=0;n=0;while(n<14&&tries++<4000){const x=PORT.x+rr(-310,310),y=rr(5850,6240);if(y<coastY(x)-75&&Math.abs(x-PORT.x)>40&&houses.every(h=>dist(h.x,h.y,x,y)>90)){addHouse(x,y,{c:["#c7c2b4","#8fa3a8","#b0664a"][(R()*3)|0]});n++}}
+  houses.push({x:2800,y:4330,w:150,h:90,rot:Math.PI/2,c:"#8a3f33",barn:1});addHouse(2790,4650,{rot:.1});addHouse(5440,1450,{rot:.2});
+  // ciudad
+  const bc=["#5d6a70","#66706f","#56626b","#6d7374","#75706a","#646b78"];
+  const addB=(x,y,w,h,o)=>blds.push(Object.assign({x,y,w,h,tall:rr(8,18),lit:R()<.6,c:bc[(R()*bc.length)|0]},o||{}));
+  for(let c=0;c<14;c++)for(let r=0;r<9;r++){const t=CT[c+","+r]||"b",q=cell(c,r),cx=q.x+55,cy=q.y+55;
+    if(t==="b"){const v=R();if(v<.4)addB(cx,cy,rr(80,104),rr(80,104));else if(v<.75){addB(cx-28,cy,48,rr(84,104));addB(cx+28,cy,48,rr(70,104))}
+      else for(const [ox,oy] of [[-28,-28],[28,-28],[-28,28],[28,28]])addB(cx+ox,cy+oy,rr(40,50),rr(40,50),{tall:6,c:roofs[(R()*roofs.length)|0]})}
+    else if(t==="shop")addB(cx,cy-10,106,78,{awn:ucol[(R()*ucol.length)|0],tall:7});
+    else if(t==="hosp")addB(cx,cy-22,108,62,{c:"#d9d6cc",hosp:1,lit:true});
+    else if(t==="school")addB(cx-8,cy,90,106,{c:"#b08a5a",school:1,tall:8});
+    else if(t==="fac")addB(q.x+125,cy,236,96,{c:"#6a5a52",fac:1,tall:14});
+    else if(t==="power")for(const ox of [-30,0,30])addB(cx+ox,cy,20,56,{c:"#7d7f78",tall:5,lit:false,pw:1})}
+  for(let i=0;i<120;i++){let x,y;do{x=MOUNT.x+rr(-1,1)*MOUNT.rx*.92;y=MOUNT.y+rr(-1,1)*MOUNT.ry*.92}while(!inEll(x,y,{x:MOUNT.x,y:MOUNT.y,rx:MOUNT.rx*.92,ry:MOUNT.ry*.92})||dist(x,y,PEAK.x,PEAK.y)<250||dist(x,y,PONDS[1].x,PONDS[1].y)<270||polyD(x,y,RIV_A)<110);
+    peaks.push(mkPeak(x,y,rr(60,140)))}
+  peaks.push(mkPeak(PEAK.x,PEAK.y,220,1));peaks.sort((a,b)=>a.y-b.y);
+  function mkPeak(x,y,s,main){const k=5+((R()*3)|0),v=[];for(let i=0;i<k;i++)v.push({a:i/k*TAU+rr(-.25,.25),d:rr(.7,1.1)});return{x,y,s,v,main,ox:rr(-.15,.15),oy:rr(-.2,0)}}
+  oro.push({x:PEAK.x,y:PEAK.y,t:0});peaks.filter(p=>!p.main&&p.s>120).slice(0,4).forEach(p=>oro.push({x:p.x,y:p.y,t:0}));
+  const vHome={c:1,x:VILLAGE.x,y:VILLAGE.y,r:400},cHome={x:CITY.x,y:CITY.y,w:CITY.w,h:CITY.h,grid:1};
+  for(let i=0;i<13;i++)walker(people,vHome,18);for(let i=0;i<28;i++)walker(people,cHome,20);
+  for(let i=0;i<6;i++)walker(people,{c:1,x:PORT.x,y:5990,r:210},16);
+  for(let i=0;i<4;i++)walker(people,{c:1,x:CAMP.x,y:CAMP.y,r:90},10);
+  for(let i=0;i<9;i++)walker(kids,{x:YARD.x-20,y:YARD.y+6,w:YARD.w+10,h:YARD.h-12},46);
+  walker(dogs,vHome,34);walker(dogs,vHome,34);walker(dogs,{x:2500,y:4200,w:450,h:700},34);walker(dogs,cHome,34);walker(dogs,{x:PARK.x,y:PARK.y,w:PARK.w,h:PARK.h},38);walker(dogs,{x:SHEEP.x,y:SHEEP.y,w:SHEEP.w,h:SHEEP.h},40);
+  for(let i=0;i<9;i++)walker(cows,{x:PASTURE.x+20,y:PASTURE.y+20,w:PASTURE.w-40,h:PASTURE.h-40},7,{fly:0,sp0:rr(.3,.9)});
+  for(let i=0;i<16;i++)walker(sheep,{x:SHEEP.x+20,y:SHEEP.y+20,w:SHEEP.w-40,h:SHEEP.h-40},5);
+  for(let i=0;i<12;i++){const a=R()*TAU,d=Math.sqrt(R())*.8;walker(deer,{c:1,x:F0.x+Math.cos(a)*d*F0.rx,y:F0.y+Math.sin(a)*d*F0.ry,r:240},13)}
+  for(let i=0;i<5;i++)walker(ducks,{c:1,x:PONDS[0].x,y:PONDS[0].y,r:95},8);
+  for(let i=0;i<5;i++)walker(ducks,{c:1,x:LAKE.x-200,y:LAKE.y+250,r:150},8);
+  for(let i=0;i<3;i++)walker(ducks,{c:1,x:PARK.x+PARK.w/2,y:PARK.y+PARK.h/2,r:24},4);
+  castaway=walker([],{c:1,x:ISL.x,y:ISL.y+5,r:55},9);
+  for(let j=0;j<2;j++)for(let i=0;i<3;i++)fields.push({x:1280+i*460,y:4180+j*400,w:420,h:340,st:(i+j)%3===0?1:0,g:0,seed:1,t:rr(0,10)});
+  const vl=[0,2,3,4,5,7,8,9,10,11,13,14],hl=[0,1,2,3,6,7,8,9],cc=["#b5583f","#c7c2b4","#3f5f78","#2b2f33","#d9a441","#7d8f5a"];
+  for(let i=0;i<22;i++){const hor=R()<.5;cars.push({hor,l:hor?hl[(R()*hl.length)|0]:vl[(R()*vl.length)|0],p:R(),v:(R()<.5?-1:1)*rr(55,85),c:cc[(R()*cc.length)|0]})}
+  for(let i=0;i<6;i++)boats.push({x:rr(300,W-300),y:rr(6650,7450),vx:0,vy:0,a:0});
+  for(let i=0;i<5;i++)moored.push({x:PORT.x-60+i*30,y:coastY(PORT.x)+196+(i%2)*10,a:Math.PI/2+rr(-.2,.2)});
+  moored.push({x:LAKE.x+140,y:LAKE.y-120,a:.4,fisher:1});
+  const gc=[[PORT.x,coastY(PORT.x)+150],[LIGHT.x,LIGHT.y+60],[ISL.x,ISL.y],[ISL.x+60,ISL.y-80],[5200,6500],[7800,6480],[3600,6520],[9600,6500]];
+  for(let i=0;i<18;i++){const c=gc[i%gc.length];gulls.push({cx:c[0],cy:c[1],r:rr(50,150),a:R()*TAU,w:rr(.35,.7)*(R()<.5?-1:1),ph:R()*TAU})}
+  for(let i=0;i<7;i++)flocks.push({x:R()*W,y:R()*6200,h:R()*TAU,n:6+((R()*8)|0),sc:0,ph:R()*TAU,turn:0});
+})();
+function mkCloud(x,y,o){const v=Math.random(),m=v<.6?1:v<.85?2:v<.95?3:5;const pf=[];for(let i=0;i<5;i++)pf.push({a:Math.random()*TAU,d:Math.random()*.55,s:.45+Math.random()*.3});
+  return Object.assign({x,y,m,r:42+Math.sqrt(m)*16,pf,age:0,life:rnd(160,320)},o||{})}
+for(let i=0;i<34;i++)clouds.push(mkCloud(Math.random()*W,Math.random()*H,{age:5}));
+for(const o of oro)clouds.push(mkCloud(o.x,o.y,{fixed:o,age:5,m:2,r:66}));
+
+/* ---------- Logros ---------- */
+const ACH=[
+ ["nace","Nubecilla","Empieza tu vida de nube."],
+ ["sorbo","Primer sorbo","Flota sobre el lago, el río o el mar hasta beber un buen trago."],
+ ["gotas","Cuatro gotas","Haz llover un rato por primera vez."],
+ ["union","Mejor juntas","Fúndete con otra nube."],
+ ["grande","Nube con cuerpo","Alcanza tamaño 5 uniéndote a más nubes."],
+ ["riego","Agua de mayo","Riega un campo sembrado hasta que madure."],
+ ["espanta","Espantapájaros","Ahuyenta a los cuervos de un sembrado con lluvia o con un trueno."],
+ ["perro","Perro mojado","Moja a un perro."],
+ ["paraguas","Sin paraguas","Moja a una persona."],
+ ["vaca","Vaca lavada","Moja a una vaca en el pasto."],
+ ["oveja","Lana mojada","Moja a una oveja en el prado de la montaña."],
+ ["pueblo","Fiestas pasadas por agua","Llueve un buen rato sobre el pueblo."],
+ ["bosque","Olor a tierra mojada","Llueve un buen rato sobre el bosque."],
+ ["ciudad","Lunes gris","Llueve un buen rato sobre la ciudad."],
+ ["puerto","Mal día para pescar","Llueve un buen rato sobre el puerto."],
+ ["mojado","Llover sobre mojado","Llueve sobre el lago, el río o el mar."],
+ ["seca","Nube de paso","Llueve hasta quedarte sin una gota."],
+ ["arcoiris","Después de la lluvia","Para de llover tras un buen chaparrón, de día."],
+ ["viento","Viento en popa","Déjate llevar por un viento fuerte y vuela muy rápido."],
+ ["termica","Nacida del calor","Atrapa una nube recién formada por el calor del día."],
+ ["gorro","Gorro de montaña","Llévate una de las nubes que viven pegadas a las cumbres."],
+ ["chimenea","Malos humos","Bebe el humo de la chimenea de la fábrica."],
+ ["parque","Riego automático","Llueve sobre el parque de la ciudad."],
+ ["recreo","Recreo pasado por agua","Moja a los niños en el patio del colegio."],
+ ["partido","Partido suspendido","Llueve sobre el estadio."],
+ ["desbandada","Desbandada","Moja a una bandada de pájaros en pleno vuelo."],
+ ["marinero","Marinero de agua dulce","Moja a un velero en el mar."],
+ ["camping","Se acabó la acampada","Apaga la hoguera del camping del bosque."],
+ ["explorador","Trotanubes","Sobrevuela las nueve zonas del valle."],
+ ["amanecer","Otro día","Pasa una noche entera y ve amanecer."],
+ ["cosecha","Año de bienes","Que el granjero recoja seis cosechas regadas por ti."],
+ ["cuervos","Banquete de cuervos","Deja que los cuervos se coman un sembrado entero."],
+ ["tormenta","Nubarrón","Aprende el rayo al subir de nivel, alcanza tamaño 3 y cárgate de agua."],
+ ["rayo","Y se hizo la luz","Lanza tu primer rayo."],
+ ["arbol","Leña del árbol caído","Alcanza un árbol con un rayo."],
+ ["bombero","Yo lo rompo, yo lo arreglo","Apaga con lluvia un árbol en llamas."],
+ ["guarda","Guardabosques","Salva veinte árboles de las llamas."],
+ ["incendio","Tierra quemada","Deja que ardan ciento cincuenta árboles."],
+ ["rebrote","Rebrote","Riega el bosque quemado hasta que vuelva a brotar."],
+ ["doble","Dos veces en el mismo sitio","Que un rayo caiga dos veces en el mismo punto."],
+ ["campanario","Pararrayos","Alcanza el campanario de la iglesia del pueblo."],
+ ["malanube","Mala nube","Quema un campo de cultivo con un rayo."],
+ ["apagon","Apagón","Alcanza la subestación eléctrica y deja la ciudad a oscuras."],
+ ["nocturna","Tormenta de verano","Lanza un rayo en plena noche."],
+ ["nevada","Primera nevada","Descarga sobre las montañas: allí arriba, nieva."],
+ ["cumbre","Bandera en la cima","Quédate quieta sobre el pico más alto."],
+ ["avion","Turbulencias","Que un avión te atraviese."],
+ ["aguafiestas","Aguafiestas","Moja a quince personas distintas."],
+ ["contra","Contra viento y marea","Avanza contra un vendaval."],
+ ["gigante","Cumulonimbo","Alcanza tamaño 12."],
+ ["tornado","Cola de tornado","Aprende el tornado, alcanza tamaño 6 y cárgate bien."],
+ ["voladora","Vaca voladora","Pasa el tornado por el pasto."],
+ ["super","Supercélula","Alcanza tamaño 25."],
+ ["nivel5","Nube con oficio","Alcanza el nivel 5."],
+ ["vapor100","Coleccionista de vapor","Recoge cien motas de vapor."],
+ ["pezgrande","El pez grande","Absorbe a una nube rival más pequeña que tú."],
+ ["duelo","Duelo en el cielo","Deshaz a una nube rival a rayos."],
+ ["antiaerea","Defensa antiaérea","Ahuyenta a la avioneta siembranubes con un rayo."],
+ ["evaporada","Volver a empezar","Evapórate del todo y renace sobre el lago."],
+ ["buena","Nube bendita","Gánate el cariño del valle ayudando."],
+ ["negra","Nube negra","Gánate el miedo del valle fastidiando."],
+ ["estaciones","Un año entero","Vive las cuatro estaciones."],
+ ["nivel10","Veterana del cielo","Alcanza el nivel 10."],
+ ["nubario","Nubario completo","Descubre las siete formas de nube."],
+ ["isla","Tierra a la vista","Dicen que mar adentro, entre la niebla, hay algo."],
+ ["aguadulce","Agua dulce","Llena de lluvia el barril del náufrago."],
+ ["senal","Señal de humo","Enciende con un rayo su hoguera de señales. No la mojes."],
+ ["rescate","Rescate","Con agua y con fuego, que un barco recoja al náufrago."],
+ ["come10","Glotona","Come 10 nubes."],
+ ["come50","Devoranubes","Come 50 nubes."],
+ ["come200","Agujero negro del cielo","Come 200 nubes."],
+ ["vapor500","Destiladora","Recoge 500 motas de vapor."],
+ ["vapor2000","Fábrica de vapor","Recoge 2.000 motas de vapor."],
+ ["noctambula","Noctámbula","Recoge 50 motas de vapor de noche."],
+ ["racha","Racha de vapor","Encadena 14 motas de vapor sin parar."],
+ ["moja50","Chaparrón popular","Moja a 50 personas distintas."],
+ ["moja150","Pesadilla del paraguas","Moja a 150 personas distintas."],
+ ["rayo25","Electricista","Lanza 25 rayos."],
+ ["rayo100","Señora de los truenos","Lanza 100 rayos."],
+ ["guarda100","Brigada forestal","Salva cien árboles de las llamas."],
+ ["campos10","Regadío","Riega 10 campos hasta que maduren."],
+ ["campos30","Mejor que un aspersor","Riega 30 campos hasta que maduren."],
+ ["cosecha20","Despensa llena","Que el granjero recoja 20 cosechas regadas por ti."],
+ ["rivE5","Depredadora","Absorbe a 5 nubes rivales."],
+ ["rivE20","Reina del cielo","Absorbe a 20 nubes rivales."],
+ ["rivK5","Cazanubes","Deshaz a 5 nubes rivales a rayos."],
+ ["planes3","Espacio aéreo cerrado","Ahuyenta a 3 avionetas siembranubes."],
+ ["canon","Blanco fácil","Recibe un cañonazo antinube."],
+ ["km50","Viajera","Recorre 50 km."],
+ ["km200","Vuelta al valle","Recorre 200 km."],
+ ["surf","Surfista del vendaval","Vuela 30 segundos en pleno vendaval."],
+ ["dias3","Tres amaneceres","Vive 3 días."],
+ ["dias20","Nube veterana","Vive 20 días."],
+ ["primavera","Abril, aguas mil","Llueve 60 segundos en primavera."],
+ ["verano","Verano sin incendios","Apaga 10 árboles en verano."],
+ ["otono","Hoja al viento","Recorre 2 km entre vendavales de otoño."],
+ ["invierno","Pueblo nevado","Nieva sobre el pueblo en invierno."],
+ ["nivel15","Experta del clima","Alcanza el nivel 15."],
+ ["nivel20","Fenómeno meteorológico","Alcanza el nivel 20."],
+ ["tam40","Frente nuboso","Alcanza tamaño 40."],
+ ["tam60","Borrasca","Alcanza tamaño 60."],
+ ["querida","Querida por el valle","Gánate buena fama."],
+ ["temida","Temida por el valle","Gánate mala fama."],
+ ["f_estrato","Manto gris","Siendo estrato, llueve 5 segundos sobre la ciudad."],
+ ["f_cirro","Estela de cirro","Recorre 10 km siendo cirro."],
+ ["f_lenticular","Ancla","Siendo lenticular, aguanta quieta 8 segundos de vendaval."],
+ ["f_nimbo","Lluvia mansa","Siendo nimboestrato, riega 3 campos."],
+ ["zeus","Furia de cumulonimbo","Siendo cumulonimbo, lanza 3 rayos en 10 segundos."],
+ ["f_niebla","Calabobos","Siendo niebla, moja a 10 personas sin llover."],
+ ["cap1","Una nube pequeña","Completa el capítulo 1 de misiones."],
+ ["cap2","Crecer","Completa el capítulo 2 de misiones."],
+ ["cap3","La tormenta","Completa el capítulo 3 de misiones."],
+ ["cap4","Elegir bando","Completa el capítulo 4 de misiones."],
+ ["cap5","Leyenda del cielo","Completa todas las misiones."]
+];
+const KEY="vidanube.v2";
+const fresh=()=>({ach:{},m:1,w:30,x:5600,y:4000,seen:{},wetP:0,harv:0,burnt:0,ext:0,found:0,rescued:0,t:.1,xp:0,lvl:1,ups:{},karma:0,forms:{cumulo:1},form:"cumulo",ft:{},day:0,motes:0,c:{},mis:{}});
+let save=fresh();
+try{const s=JSON.parse(localStorage.getItem(KEY)||"null");if(s&&s.ach)save=Object.assign(save,s);
+  else{const o=JSON.parse(localStorage.getItem("vidanube.v1")||"null");if(o&&o.ach){for(const k in o.ach)if(ACH.some(a=>a[0]===k))save.ach[k]=1}}}catch(e){}
+if(save.ach.rayo&&!save.ups.rayo)save.ups.rayo=1;if(save.ach.tornado&&!save.ups.tornado)save.ups.tornado=1;
+function persist(){save.m=P.m;save.w=P.w;save.x=P.x;save.y=P.y;save.t=tday;try{localStorage.setItem(KEY,JSON.stringify(save))}catch(e){}}
+const $=id=>document.getElementById(id);
+const TQ=[];let tqNext=0;
+function toast(label,title,text,snd){if(label==="Logro"&&!cfg.notes)return;TQ.push([label,title,text||"",snd]);if(TQ.length>8)TQ.splice(1,1)}
+function toastPump(){const now=performance.now();if(!TQ.length||now<tqNext||paused)return;const [label,title,text,snd]=TQ.shift();
+  const t=document.createElement("div");t.className="toast"+(label==="Aviso"?" warn":"");t.innerHTML="<small></small><strong></strong><span></span>";
+  t.children[0].textContent=label;t.children[1].textContent=title;t.children[2].textContent=text;if(!text)t.children[2].remove();
+  const box=$("toasts");while(box.children.length>=1)box.firstChild.remove();box.appendChild(t);setTimeout(()=>t.remove(),label==="Aviso"?4600:3400);
+  if(snd)snd();tqNext=now+(label==="Logro"?3200:2200)}
+function unlock(id){if(save.ach[id])return;save.ach[id]=1;const a=ACH.find(a=>a[0]===id);toast("Logro",a[1],a[2],chime);persist();gain(10);refreshAch()}
+function refreshAch(){const n=ACH.filter(a=>save.ach[a[0]]).length;
+  $("achCount").textContent=n+"/"+ACH.length;$("achCount2").textContent=n+"/"+ACH.length;
+  const nx=ACH.find(a=>!save.ach[a[0]]);const h=$("hint");h.textContent="";
+  if(nx){const b=document.createElement("b");b.textContent=nx[1];h.append("Siguiente idea · ",b,document.createElement("br"),nx[2])}
+  else h.textContent="Has vivido una vida de nube completa.";
+  const ul=$("achList");ul.textContent="";
+  for(const a of ACH){const li=document.createElement("li");if(save.ach[a[0]])li.className="done";
+    li.append(document.createElement("i"),Object.assign(document.createElement("strong"),{textContent:a[1]}),Object.assign(document.createElement("span"),{textContent:a[2]}));ul.appendChild(li)}}
+
+/* ---------- Estado ---------- */
+const P={x:save.x,y:save.y,vx:0,vy:0,tx:save.x,ty:save.y,m:save.m,w:save.w,rain:false,streak:0,cool:0,peakT:0,gs:0,contra:0,dash:0,dashCd:0,zeroT:0,steal:0,formCd:0,pf:[]};
+for(let i=0;i<10;i++)P.pf.push({a:i/10*TAU+Math.random()*.4,d:i<3?Math.random()*.2:.35+Math.random()*.3,s:.42+Math.random()*.26});
+const up=k=>save.ups[k]||0;
+const FM={cumulo:{eat:1.35,xpEat:1.3},
+  estrato:{rad:1.6,speed:.65,evap:.15,rainCost:.6},
+  cirro:{speed:1.9,cap:.4,hidden:1,noRain:1,noRay:1,evap:.6,magnet:2.6},
+  lenticular:{windImm:1,armor:.35,speed:.9},
+  nimbo:{rainCost:.3,grow:3,fire:3,speed:.75,rad:1.15},
+  cumulonimbo:{rayCost:.4,rayCd:.4,rayDmg:2,torCost:.6,evap:1.7},
+  niebla:{hidden:1,noRay:1,cap:.6,evap:.4,speed:.8,mist:1}};
+const fm=()=>FM[save.form]||FM.cumulo;
+const cap=()=>100*P.m*(1+.25*up("deposito"))*(fm().cap||1), rad=()=>(52+24*Math.sqrt(P.m))*(fm().rad||1), alt=()=>save.form==="niebla"?10:rad()*.75+(save.form==="cirro"?120:50);
+const stormy=()=>up("rayo")>0&&P.m>=3&&!fm().noRay&&P.w>=cap()*.3;
+let drops=[],bolts=[],floats=[],smoke=[],bursts=[],streaks=[],rainbow=null,tornado=null,plane=null,planeT=25,flash=0,snowLv=0,time=0,saveT=0,spawnT=0;
+let tday=save.t||.1,dark=0,warm=0,sawNight=false,cityOff=0,fogA=save.found?0:1;
+let gale=0,galeLeft=0,galeT=95,WGX=30,WGY=0,WSP=30;
+const rainZ={},keys={};let lastStrike=null,pointerDown=false,started=false;
+const isl={water:0,fire:0,sig:0,ship:null,gone:!!save.rescued};
+const camp={fire:1,t:0,wetT:0};
+const farmer={x:2790,y:4700,st:"idle",job:null,f:null,work:0,ang:0};
+const crows={st:"away",x:2500,y:3050,t:30,f:null,ph:0};
+const ROOST={x:2500,y:3050};
+const SPECIAL=[
+  {x:CHURCH.x,y:CHURCH.y,hit(){karma(-4);unlock("campanario")}},
+  {x:POWER.x+55,y:POWER.y+55,hit(){cityOff=50;karma(-6);unlock("apagon")}},
+  {x:WOOD.x,y:WOOD.y,hit(){if(!isl.gone){isl.fire=70;karma(5);unlock("senal")}}},
+  {x:LIGHT.x,y:LIGHT.y,hit(){}}
+];
+
+/* ---------- Ajustes ---------- */
+const SKEY="vidanube.cfg";
+const COARSE=!!(window.matchMedia&&matchMedia("(pointer: coarse)").matches);
+const cfg={vol:.8,mus:.7,amb:.8,sfx:.8,shake:1,calm:false,cam:.5,notes:true,ctrl:COARSE?"joy":"tap"};
+try{const c=JSON.parse(localStorage.getItem(SKEY)||"null");if(c)Object.assign(cfg,c);
+  else if(window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches){cfg.shake=0;cfg.calm=true}}catch(e){}
+function saveCfg(){try{localStorage.setItem(SKEY,JSON.stringify(cfg))}catch(e){}}
+
+/* ---------- Sensación: temblor por trauma, pausa de impacto, rebote ---------- */
+const FEEL={trauma:0,t:0,ox:0,oy:0,hsEnd:0,pop:0,glow:0,punch:0};
+let sparks=[],nearFire=0;
+const TIER={small:[.15,0,4],medium:[.45,.06,10],large:[.85,.12,26]};
+function feedback(tier,x,y){const T=TIER[tier];FEEL.trauma=Math.min(1,FEEL.trauma+T[0]);
+  const now=performance.now();if(T[1]&&now>=FEEL.hsEnd)FEEL.hsEnd=now+T[1]*1000; // una sola pausa a la vez
+  if(tier==="large")FEEL.punch=1;
+  if(x!==undefined)for(let i=0;i<T[2];i++){const a=Math.random()*TAU,v=rnd(60,260);sparks.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v*.7,t:rnd(.25,.6)})}}
+function feelFrame(rdt){ // siempre en tiempo real, para que el temblor decaiga durante la pausa
+  FEEL.trauma=Math.max(0,FEEL.trauma-1.3*rdt);const s=FEEL.trauma*FEEL.trauma*cfg.shake;FEEL.t+=rdt*30;
+  FEEL.ox=s?16*s*Math.sin(FEEL.t*1.7):0;FEEL.oy=s?11*s*Math.sin(FEEL.t*2.3):0;
+  FEEL.pop=Math.max(0,FEEL.pop-rdt/.32);FEEL.glow=Math.max(0,FEEL.glow-rdt/.28);FEEL.punch=cfg.shake>0?Math.max(0,FEEL.punch-rdt/.35):0}
+
+/* ---------- Sonido: todo sintetizado, por buses ---------- */
+const AU={ctx:null,musT:3,storm:0,calmT:0},MASTER=1;
+function audioInit(){if(AU.ctx){AU.ctx.resume();return}
+  const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;let c;try{c=AU.ctx=new AC()}catch(e){return}
+  const g=(v,to)=>{const n=c.createGain();n.gain.value=v;if(to)n.connect(to);return n};
+  const lim=c.createDynamicsCompressor();lim.threshold.value=-9;lim.knee.value=6;lim.ratio.value=14;lim.attack.value=.003;lim.release.value=.25;
+  AU.out=g(.84,c.destination);lim.connect(AU.out);AU.master=g(1,lim);
+  AU.duck=g(1,AU.master); // música y ambiente pasan por aquí: los truenos lo bajan sin tocar los ajustes
+  const mf=c.createBiquadFilter();mf.type="lowpass";mf.frequency.value=2200;mf.connect(AU.duck);
+  AU.mus=g(1,mf);AU.amb=g(1,AU.duck);AU.sfx=g(1,AU.master);AU.ui=g(1,AU.master);
+  const len=c.sampleRate*2,buf=c.createBuffer(1,len,c.sampleRate),d=buf.getChannelData(0);for(let i=0;i<len;i++)d[i]=Math.random()*2-1;AU.noise=buf;
+  const loop=(type,f,q)=>{const s=c.createBufferSource();s.buffer=buf;s.loop=true;s.playbackRate.value=.8+Math.random()*.4;
+    const fl=c.createBiquadFilter();fl.type=type;fl.frequency.value=f;fl.Q.value=q||.7;const gn=g(0,AU.amb);s.connect(fl);fl.connect(gn);s.start();return{f:fl,g:gn}};
+  AU.wind=loop("bandpass",500,.6);AU.rain=loop("highpass",1800,.5);AU.sea=loop("lowpass",420,.5);AU.fire=loop("bandpass",2400,1.2);AU.rumble=loop("lowpass",110,.7);
+  const o=c.createOscillator();o.frequency.value=4300;const tg=g(.5),l=c.createOscillator();l.type="square";l.frequency.value=13;const lg=g(.5);
+  l.connect(lg);lg.connect(tg.gain);AU.crick=g(0,AU.amb);o.connect(tg);tg.connect(AU.crick);o.start();l.start();
+  AU.drone=g(0,AU.mus);for(const f of [73.4,110]){const d2=c.createOscillator();d2.type="sine";d2.frequency.value=f;d2.connect(AU.drone);d2.start()}
+  applyVol()}
+function applyVol(){if(!AU.ctx)return;const t=AU.ctx.currentTime,sq=v=>v*v; // deslizador al cuadrado: el cambio se reparte por todo el recorrido
+  AU.master.gain.setTargetAtTime(sq(cfg.vol)*MASTER,t,.05);AU.mus.gain.setTargetAtTime(sq(cfg.mus),t,.05);
+  AU.amb.gain.setTargetAtTime(sq(cfg.amb),t,.05);AU.sfx.gain.setTargetAtTime(sq(cfg.sfx),t,.05);AU.ui.gain.setTargetAtTime(sq(cfg.sfx),t,.05)}
+function noiseShot(dur,type,f0,f1,vol,bus,q,delay){const c=AU.ctx;if(!c)return;const t=c.currentTime+(delay||0),s=c.createBufferSource();s.buffer=AU.noise;s.playbackRate.value=rnd(.75,1.25);
+  const fl=c.createBiquadFilter();fl.type=type;fl.Q.value=q||.7;fl.frequency.setValueAtTime(f0,t);fl.frequency.exponentialRampToValueAtTime(f1,t+dur);
+  const g=c.createGain();g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.0005,t+dur);s.connect(fl);fl.connect(g);g.connect(bus);s.start(t,Math.random());s.stop(t+dur+.05)}
+function tone(type,f0,f1,dur,vol,bus,delay,att){const c=AU.ctx;if(!c)return;const t=c.currentTime+(delay||0),o=c.createOscillator(),g=c.createGain();o.type=type;
+  o.frequency.setValueAtTime(f0,t);o.frequency.exponentialRampToValueAtTime(f1,t+dur);g.gain.setValueAtTime(.0005,t);g.gain.exponentialRampToValueAtTime(vol,t+(att||.015));
+  g.gain.exponentialRampToValueAtTime(.0005,t+dur);o.connect(g);g.connect(bus);o.start(t);o.stop(t+dur+.05)}
+function thunder(big){const c=AU.ctx;if(!c)return;noiseShot(.14,"highpass",3200,900,big?.55:.4,AU.sfx);
+  noiseShot(rnd(2.2,3.4),"lowpass",rnd(320,480),55,big?1:.7,AU.sfx,.7,.03);if(big)noiseShot(3.5,"lowpass",160,45,.6,AU.sfx,.7,.25);
+  const t=c.currentTime;AU.duck.gain.cancelScheduledValues(t);AU.duck.gain.setTargetAtTime(.35,t,.03);AU.duck.gain.setTargetAtTime(1,t+.6,.5)}
+const sMerge=()=>tone("sine",rnd(290,350),rnd(560,650),.3,.16,AU.sfx,0,.03);
+const chime=()=>{tone("triangle",659,659,.6,.12,AU.ui);tone("triangle",988,988,.9,.1,AU.ui,.13)};
+const whoosh=()=>noiseShot(1.8,"bandpass",260,1500,.3,AU.sfx,1.4);
+const sip=()=>tone("sine",rnd(600,800),rnd(1000,1300),.09,.03,AU.sfx);
+const caw=()=>{for(let i=0;i<3;i++)tone("sawtooth",rnd(520,600),rnd(380,430),.16,.045,AU.sfx,i*.19+Math.random()*.05)};
+const chirp=()=>{const n=2+((Math.random()*3)|0),b=rnd(2400,3600);for(let i=0;i<n;i++)tone("sine",b,b*rnd(1.2,1.5),.08,.03,AU.amb,i*.11)};
+const gull=()=>{tone("triangle",rnd(1000,1200),rnd(680,760),.34,.035,AU.amb);tone("triangle",rnd(1000,1200),rnd(680,760),.3,.03,AU.amb,.4)};
+function moo(){const c=AU.ctx;if(!c)return;const t=c.currentTime,o=c.createOscillator(),f=c.createBiquadFilter(),g=c.createGain();o.type="sawtooth";
+  o.frequency.setValueAtTime(rnd(150,170),t);o.frequency.linearRampToValueAtTime(rnd(100,115),t+.8);f.type="lowpass";f.frequency.value=650;
+  g.gain.setValueAtTime(.0005,t);g.gain.exponentialRampToValueAtTime(.16,t+.12);g.gain.exponentialRampToValueAtTime(.0005,t+.85);o.connect(f);f.connect(g);g.connect(AU.sfx);o.start(t);o.stop(t+.9)}
+function mnote(f,vol,dur){const c=AU.ctx,t=c.currentTime,g=c.createGain();g.gain.setValueAtTime(.0005,t);g.gain.exponentialRampToValueAtTime(vol,t+dur*.3);g.gain.exponentialRampToValueAtTime(.0005,t+dur);g.connect(AU.mus);
+  for(const [ty,de] of [["sine",0],["triangle",7]]){const o=c.createOscillator();o.type=ty;o.frequency.value=f;o.detune.value=de;o.connect(g);o.start(t);o.stop(t+dur+.1)}}
+const SC_DAY=[261.6,293.7,329.6,392,440,523.3],SC_NIGHT=[220,261.6,293.7,329.6,392,440],SC_STORM=[146.8,174.6,196,220,261.6];
+function audioFrame(rdt){const c=AU.ctx;if(!c||c.state!=="running"||!started)return;const t=c.currentTime,set=(p,v,k)=>p.setTargetAtTime(v,t,k||.2);
+  set(AU.wind.g.gain,clamp(WSP/110,.04,.75));set(AU.wind.f.frequency,340+WSP*5);
+  set(AU.rain.g.gain,P.rain?(hz==="montana"?.04:.12+Math.min(.1,P.m*.005)):0,.25);
+  const sea=clamp(1-(coastY(P.x)-P.y)/900,0,1);set(AU.sea.g.gain,sea*(.3+.14*Math.sin(time*.55)),.3);
+  set(AU.fire.g.gain,Math.min(.4,nearFire*.03)*(.5+.5*Math.random()),.04);
+  set(AU.rumble.g.gain,tornado?.6:gale*.18,.3);
+  set(AU.crick.gain,(hz==="mar"||hz==="ciudad"||hz==="isla")?0:dark*.03,.8);
+  if(dark<.3&&(hz==="bosque"||hz==="prado"||hz==="granja"||hz==="pueblo")&&Math.random()<rdt*.45)chirp();
+  if(dark<.5&&sea>.5&&Math.random()<rdt*.16)gull();
+  // música adaptativa: una capa tranquila siempre, una capa de tensión con histéresis
+  const tense=!!tornado||(stormy()&&P.rain)||nearFire>12;if(tense){AU.storm=1;AU.calmT=0}else if(AU.storm){AU.calmT+=rdt;if(AU.calmT>7)AU.storm=0}
+  set(AU.drone.gain,AU.storm?.09:0,1.5);
+  AU.musT-=rdt;if(AU.musT<=0){AU.musT=AU.storm?rnd(1.8,3.2):rnd(2.8,5.5);const sc=AU.storm?SC_STORM:dark>.5?SC_NIGHT:SC_DAY;
+    let f=sc[(Math.random()*sc.length)|0];if(!AU.storm&&Math.random()<.3)f*=.5;mnote(f,.13,rnd(4.5,7));if(Math.random()<.3)mnote(f*1.5,.07,rnd(4,6))}}
+document.addEventListener("visibilitychange",()=>{if(!AU.ctx)return;if(document.hidden)AU.ctx.suspend();else if(started)AU.ctx.resume()});
+
+/* ---------- Progreso: experiencia, niveles, mejoras, reputación ---------- */
+const UPS={
+  deposito:{n:"Depósito",d:"+25 % de capacidad de agua.",max:5},
+  sorbo:{n:"Sorbo largo",d:"Bebes un 35 % más rápido.",max:4},
+  ligera:{n:"Ligera",d:"+8 % de velocidad propia.",max:5},
+  fina:{n:"Lluvia fina",d:"Llover gasta un 15 % menos de agua.",max:4},
+  fria:{n:"Piel fría",d:"El sol te evapora un 20 % menos.",max:4},
+  iman:{n:"Imán de vapor",d:"Recoges vapor desde más lejos.",max:3},
+  coraza:{n:"Coraza",d:"Rivales, avionetas y cañones te quitan un 25 % menos.",max:3,min:3},
+  rafaga:{n:"Ráfaga",d:"Acción nueva: un acelerón corto. Cada nivel acorta la espera.",max:3,min:2,act:1},
+  rayo:{n:"Rayo",d:"Acción nueva: lanzar rayos con tamaño 3. Cada nivel abarata y refuerza.",max:4,min:3,act:1},
+  tornado:{n:"Tornado",d:"Acción nueva: desatar un tornado con tamaño 6. Cada nivel lo alarga.",max:3,min:7,act:1}
+};
+const NEED=[30,70,100,150,200,250,300,350,400,450];
+const need=l=>NEED[l-1]||450+60*(l-10);
+let pendLv=save.pts||0,paused=false,combo=0,comboT=0;
+function gain(n,x,y){if(!started)return;if(save.karma>=15)n*=1.25;n=Math.round(n);save.xp+=n;
+  if(n>=5&&x!==undefined)floats.push({x,y:y-40,t:1.6,txt:"+"+n+" exp",xp:1});
+  while(save.xp>=need(save.lvl)){save.xp-=need(save.lvl);save.lvl++;pendLv++;save.pts=pendLv;
+    toast("Nivel "+save.lvl,"Tienes una mejora","Ábrela cuando quieras con el botón Mejoras, arriba.",fanfare);persist()}
+  if(save.lvl>=5)unlock("nivel5");if(save.lvl>=10)unlock("nivel10");refreshPts()}
+function refreshPts(){const b=$("ptsBadge");b.textContent=pendLv;b.hidden=!pendLv;$("btnUp").classList.toggle("has",!!pendLv)}
+function openLv(){if(!pendLv){showUps();return}const all=Object.keys(UPS).filter(k=>up(k)<UPS[k].max&&save.lvl>=(UPS[k].min||1));
+  if(!all.length){P.m+=pendLv;pendLv=0;save.pts=0;refreshPts();return}
+  const acts=all.filter(k=>UPS[k].act&&!up(k)),rest=all.filter(k=>!acts.includes(k)).sort(()=>Math.random()-.5),pickd=acts.slice(0,1).concat(rest).slice(0,3);
+  $("lvTitle").textContent=pendLv>1?pendLv+" mejoras por elegir":"Elige una mejora";$("lvSub").textContent="Escoge una de estas tres. No se puede deshacer.";const box=$("lvCards");box.textContent="";
+  for(const k of pickd){const b=document.createElement("button");b.type="button";b.className="upc";const U=UPS[k];
+    b.append(Object.assign(document.createElement("small"),{textContent:up(k)?"nivel "+(up(k)+1)+" de "+U.max:(U.act?"acción nueva":"nueva")}),Object.assign(document.createElement("strong"),{textContent:U.n}),Object.assign(document.createElement("span"),{textContent:U.d}));
+    b.onclick=()=>{save.ups[k]=up(k)+1;pendLv--;save.pts=pendLv;persist();refreshPts();sMerge();if(pendLv>0)openLv();else showUps()};box.appendChild(b)}
+  showOwned();$("lvPanel").hidden=false;paused=true}
+function showUps(){$("lvTitle").textContent="Tus mejoras";$("lvSub").textContent="Sube de nivel para conseguir más. Te faltan "+Math.max(0,Math.ceil(need(save.lvl)-save.xp))+" de experiencia.";
+  $("lvCards").textContent="";showOwned();$("lvPanel").hidden=false;paused=true}
+function showOwned(){const ul=$("lvOwned");ul.textContent="";const ks=Object.keys(UPS).filter(k=>up(k));
+  $("lvOwnedH").hidden=!ks.length;for(const k of ks){const li=document.createElement("li");li.append(Object.assign(document.createElement("strong"),{textContent:UPS[k].n}),Object.assign(document.createElement("span"),{textContent:"nivel "+up(k)+" de "+UPS[k].max}));ul.appendChild(li)}}
+const KT=k=>k>=40?"Nube bendita":k>=15?"Buena nube":k<=-40?"Nube negra":k<=-15?"Mala nube":"Nube corriente";
+function karma(n){if(!started)return;const o=save.karma,k=save.karma=clamp(o+n,-100,100);
+  if(o>-15&&k<=-15)toast("Reputación","Mala nube","El pueblo instala cañones antinube. A cambio, tus rayos cuestan la mitad.");
+  if(o<15&&k>=15)toast("Reputación","Buena nube","El valle te quiere: ganas un 25 % más de experiencia.");
+  if(k>=40)unlock("buena");if(k<=-40)unlock("negra")}
+const fanfare=()=>{[523,659,784,1047].forEach((f,i)=>tone("triangle",f,f,.5,.11,AU.ui,i*.09))};
+const blip=n=>tone("sine",520*Math.pow(2,n/12),560*Math.pow(2,n/12),.12,.05,AU.sfx);
+const zap=()=>noiseShot(.18,"bandpass",1800,500,.22,AU.sfx,3);
+const alarm=()=>{for(let i=0;i<3;i++)tone("square",880,660,.16,.05,AU.ui,i*.22)};
+
+/* ---------- Estaciones ---------- */
+const SEA={name:["Primavera","Verano","Otoño","Invierno"],evap:[1,1.7,1,.5],fire:[.8,1.7,1,.3],grow:[1.5,1,.8,.3],wind:[1,.9,1.35,1.1],
+  tint:[null,"255,210,120,.07","200,110,40,.11","225,235,245,.2"],
+  msg:["Todo crece deprisa. Buen momento para regar.","El sol te evapora mucho más y el fuego corre.","Viento fuerte y vendavales. El campo crece menos.","Nieva en todo el valle. Casi no te evaporas."]};
+let season=Math.floor(save.day/2)%4;
+const GREEN=["#1f3d33","#2f5a45","#3f7355"];
+const TREEC=[[GREEN],[GREEN,["#24402f","#3a6142","#557a4c"]],[GREEN,["#5a3a22","#a8642c","#d08a3a"],["#5c4a1f","#a88a2c","#d0b03a"],["#5a2a22","#9a4630","#c8643a"]],[["#2a3d3a","#6f8a86","#dfe8e6"]]];
+function newDay(){save.day++;const ns=Math.floor(save.day/2)%4;if(ns!==season){season=ns;toast("Estación",SEA.name[ns],SEA.msg[ns],fanfare);if(started)gain(25)}
+  if(save.day>=8)unlock("estaciones")}
+
+/* ---------- Formas de nube (nubario) ---------- */
+const FSTL=["Velocidad","Lluvia","Rayos","Sigilo","Aguante"],FST={cumulo:[3,3,3,1,3],estrato:[1,5,2,1,5],cirro:[5,0,0,5,1],lenticular:[2,2,3,2,5],nimbo:[2,5,1,1,3],cumulonimbo:[3,3,5,1,1],niebla:[2,3,0,5,3]};
+const FORMS=[
+  ["cumulo","Cúmulo","Glotona: come nubes desde más lejos y gana un 30 % más de experiencia al hacerlo.",""],
+  ["estrato","Estrato","Lluvia enorme (un 60 % más ancha) y casi no se evapora al sol. Muy lenta.","Pasa un rato sobre el mar de noche."],
+  ["cirro","Cirro","La más rápida, casi el doble. Nadie la ve y atrae el vapor desde muy lejos. No llueve ni lanza rayos y guarda poca agua.","Vuela muy rápido a favor del viento."],
+  ["lenticular","Lenticular","Coraza: recibe un 65 % menos de daño y el viento no la mueve. Perfecta para plantar cara a rivales.","Quédate quieta sobre el pico más alto."],
+  ["nimbo","Nimboestrato","Llover cuesta un tercio, el campo crece el triple y apaga el fuego el triple de rápido. Lenta.","Llueve mucho, sumando todas tus lluvias."],
+  ["cumulonimbo","Cumulonimbo","Rayos baratos, con recarga rapidísima y el doble de fuertes. Tornado más barato. El sol la gasta muy deprisa.","Aprende el rayo y alcanza tamaño 12."],
+  ["niebla","Niebla","A ras de suelo: nadie la ve, y moja a la gente con solo pasar, sin gastar agua. No lanza rayos.","Siendo pequeña, pasa la noche sobre el río o el lago."]
+];
+function learn(id){if(save.forms[id])return;save.forms[id]=1;const f=FORMS.find(f=>f[0]===id);toast("Nueva forma",f[1],f[2],fanfare);gain(40,P.x,P.y);refreshForms();
+  if(FORMS.every(f=>save.forms[f[0]]))unlock("nubario")}
+function refreshForms(){const ul=$("formList");ul.textContent="";
+  for(const f of FORMS){const has=save.forms[f[0]],li=document.createElement("li");if(!has)li.className="locked";
+    li.append(Object.assign(document.createElement("strong"),{textContent:has?f[1]:"???"}),Object.assign(document.createElement("span"),{textContent:has?f[2]:f[3]}));
+    if(has){const st=document.createElement("div");st.className="fst";FSTL.forEach((n,i)=>{const r=document.createElement("span");r.textContent=n;const m=document.createElement("b");m.style.setProperty("--v",FST[f[0]][i]);r.appendChild(m);st.appendChild(r)});li.appendChild(st)}
+    if(has){const b=document.createElement("button");b.type="button";b.textContent=save.form===f[0]?"En uso":"Usar";b.disabled=save.form===f[0];
+      b.onclick=()=>{if(P.formCd>0)return;save.form=f[0];P.formCd=3;FEEL.pop=1;toast("Forma",f[1],f[2]);if(fm().noRain)stopRain();sMerge();persist();refreshForms();$("formPanel").hidden=true};li.appendChild(b)}
+    ul.appendChild(li)}}
+function drawForm(form,r,pf,dk){
+  const base=mix(mix("#b9b8ae","#2c343c",dk),"#b0705f",warm*.45),mid=mix(mix("#ece6d8","#56606a",dk),"#f0b592",warm*.5),top=mix(mix("#fbf7ec","#6f7a84",dk),"#ffd9b0",warm*.5);
+  const el=(x,y,rx,ry,c)=>{ctx.fillStyle=c;ctx.beginPath();ctx.ellipse(x,y,rx,ry,0,0,TAU);ctx.fill()};
+  if(form==="estrato"){for(let i=0;i<4;i++){const ox=Math.sin(i*2.1)*r*.25,y=(i-1.5)*r*.24;el(ox,y+r*.06,r*1.05,r*.2,base);el(ox,y,r*1.05,r*.19,i%2?mid:top)}}
+  else if(form==="cirro"){ctx.lineCap="round";ctx.lineWidth=r*.09;for(let i=0;i<7;i++){const y=(i-3)*r*.2,ox=Math.sin(i*1.7)*r*.4,l=r*(.9+.3*Math.sin(i*2.3));ctx.strokeStyle=i%2?top:mid;
+      ctx.beginPath();ctx.moveTo(ox-l,y+r*.1);ctx.quadraticCurveTo(ox,y-r*.12,ox+l*.8,y);ctx.quadraticCurveTo(ox+l,y-r*.02,ox+l*.95,y-r*.16);ctx.stroke()}ctx.lineCap="butt"}
+  else if(form==="lenticular"){el(0,r*.3,r*1.25,r*.34,base);el(0,r*.22,r*1.25,r*.32,mid);el(r*.05,-r*.08,r*.9,r*.25,base);el(r*.05,-r*.14,r*.9,r*.24,top);el(r*.1,-r*.42,r*.5,r*.16,mid);el(r*.1,-r*.46,r*.5,r*.15,top)}
+  else if(form==="nimbo"){ctx.save();ctx.scale(1.2,.8);drawCloud(0,0,r*.85,pf,Math.max(dk,.6));ctx.restore();ctx.fillStyle="#3a444d";
+    for(let i=0;i<9;i++){const x=(i-4)*r*.22;poly([[x-r*.09,r*.42],[x+r*.09,r*.42],[x+Math.sin(time*2+i)*3,r*.64]]);ctx.fill()}}
+  else if(form==="cumulonimbo"){drawCloud(0,r*.15,r*.9,pf,dk);el(-r*.05,-r*.42,r*1.3,r*.36,base);el(-r*.05,-r*.5,r*1.3,r*.34,top);el(-r*.2,-r*.56,r*.8,r*.18,"rgba(255,255,255,.22)")}
+  else if(form==="niebla"){ctx.globalAlpha=.42;for(let i=0;i<6;i++){const a=i*1.05+time*.05;el(Math.cos(a)*r*.55,Math.sin(a)*r*.35,r*.75,r*.42,i%2?mid:top)}}
+  else drawCloud(0,0,r,pf,dk)}
+
+/* ---------- Peligros: nubes rivales, avioneta siembranubes, cañones ---------- */
+let rivals=[],rivalT=6,seedPlane=null,seedT=80,shots=[],motes=[],moteT=0;const CANNONS=[{x:6080,y:4570,t:0},{x:6530,y:4040,t:0}];
+const GR=mkGlow("200,90,255"),GE=mkGlow("255,90,60");
+function evaporate(){toast("Ciclo del agua","Te has evaporado","Renaces pequeña sobre el lago. Conservas nivel, mejoras y formas.");
+  P.m=1;P.w=50;P.x=P.tx=LAKE.x;P.y=P.ty=LAKE.y;P.rain=false;P.zeroT=0;save.xp=Math.floor(save.xp*.8);feedback("large");unlock("evaporada");persist()}
+function hurt(frac,size,x,y){const k=(1-.25*up("coraza"))*(fm().armor||1);P.w=Math.max(0,P.w-cap()*frac*k);
+  if(size){if(P.m>1){P.m--;floats.push({x:P.x,y:P.y-alt(),t:1.8,txt:"-1 tamaño",bad:1})}else if(P.w<=0)evaporate()}}
+function airTarget(Rd){ // el rayo prefiere lo que vuela cerca: avioneta o nube rival
+  const sp=seedPlane;if(sp&&!sp.flee&&dist(sp.x,sp.y,P.x,P.y-alt())<Rd*2.4){sp.flee=1;cnt("planes");gain(30,sp.x,sp.y);unlock("antiaerea");return[sp.x,sp.y]}
+  for(let i=0;i<rivals.length;i++){const c=rivals[i];if(dist(c.x,c.y,P.x,P.y)<Rd*1.3+c.r){c.m-=(3+up("rayo"))*(fm().rayDmg||1);c.r=52+24*Math.sqrt(Math.max(1,c.m));c.stun=2.5;
+      const p=[c.x,c.y-c.r*.75-50];if(c.m<=0){rivals.splice(i,1);cnt("rivK");gain(35,c.x,c.y);unlock("duelo");floats.push({x:c.x,y:c.y-80,t:2,txt:"rival deshecha"})}return p}}
+  return null}
+function dash(){if(!up("rafaga")||P.dashCd>0||!started)return;P.dash=1.6;P.dashCd=11-2*up("rafaga");FEEL.pop=.7;whoosh()}
+function world2(dt,z,Rd,A,C){
+  const hid=!!fm().hidden,ft=save.ft;
+  P.dash=Math.max(0,P.dash-dt);P.dashCd=Math.max(0,P.dashCd-dt);P.formCd=Math.max(0,P.formCd-dt);
+  if(!started)return;
+  // evaporación: de día pierdes agua; sin agua encoges, y si ya eres mínima, te evaporas
+  if(!WATER[z]){const ev=(.25+cap()*.004)*SEA.evap[season]*(1-dark)*(z==="ciudad"?2:z==="bosque"?.4:1)*(fm().evap||1)*(1-.2*up("fria"));P.w=Math.max(0,P.w-ev*dt);
+    if(P.w<=0){P.zeroT+=dt;if(P.zeroT>6){P.zeroT=0;if(P.m>1){P.m--;floats.push({x:P.x,y:P.y-A,t:1.8,txt:"-1 tamaño",bad:1});feedback("small")}else evaporate()}}else P.zeroT=0}else P.zeroT=0;
+  // formas por descubrir
+  if(dark>.5&&z==="mar")ft.estrato=(ft.estrato||0)+dt;if(P.gs>225)ft.cirro=(ft.cirro||0)+dt;if(P.rain)ft.nimbo=(ft.nimbo||0)+dt;
+  if(dark>.4&&(z==="rio"||z==="lago")&&P.m<=4)ft.niebla=(ft.niebla||0)+dt;
+  if(ft.estrato>12)learn("estrato");if(ft.cirro>6)learn("cirro");if(ft.nimbo>80)learn("nimbo");if(ft.niebla>12)learn("niebla");if(P.peakT>5)learn("lenticular");if(P.m>=12&&up("rayo"))learn("cumulonimbo");
+  // vapor suelto que se recoge al pasar
+  moteT-=dt;if(moteT<=0){moteT=.2;if(motes.length<180){const near=Math.random()<.55;motes.push({x:clamp(near?P.x+rnd(-1500,1500):Math.random()*W,30,W-30),y:clamp(near?P.y+rnd(-1500,1500):Math.random()*H,30,H-30),t:rnd(50,110),ph:Math.random()*6})}}
+  const mr=Rd*(.85+.35*up("iman"))*(fm().magnet||1);
+  for(let i=motes.length-1;i>=0;i--){const m=motes[i];m.t-=dt;m.x+=WGX*.25*dt;m.y+=WGY*.25*dt;if(m.t<=0){motes.splice(i,1);continue}
+    if(Math.abs(m.x-P.x)<mr&&Math.abs(m.y-P.y)<mr&&dist(m.x,m.y,P.x,P.y)<mr){motes.splice(i,1);P.w=Math.min(C,P.w+3);save.motes++;if(dark>.5)cnt("nmote");combo=Math.min(14,combo+1);if(combo>=14)unlock("racha");comboT=2.5;blip(combo);gain(1);if(save.motes>=100)unlock("vapor100")}}
+  comboT-=dt;if(comboT<=0)combo=0;
+  // nubes rivales: la grande se come a la pequeña
+  rivalT-=dt;if(rivalT<=0){rivalT=8;if(save.lvl>=3&&rivals.length<5){let x,y,k=0;do{x=Math.random()*W;y=Math.random()*6200}while(dist(x,y,P.x,P.y)<1700&&k++<20);
+      const m=Math.max(2,Math.round(P.m*rnd(.5,1.7))+(Math.random()<.5?1:0)),pf=[];for(let i=0;i<7;i++)pf.push({a:Math.random()*TAU,d:Math.random()*.55,s:.45+Math.random()*.3});
+      rivals.push({x,y,m,r:52+24*Math.sqrt(m),pf,h:Math.random()*TAU,ph:Math.random()*6,stun:0})}}
+  for(let i=rivals.length-1;i>=0;i--){const c=rivals[i],d=dist(c.x,c.y,P.x,P.y),big=c.m>P.m;c.stun=Math.max(0,c.stun-dt);
+    let vx=WGX*.5,vy=WGY*.5;
+    if(c.stun>0){}
+    else if(d<900&&!hid){const s=big?138:-118;vx+=(P.x-c.x)/d*s;vy+=(P.y-c.y)/d*s;c.hunt=big?1:-1}
+    else{c.h+=(Math.random()-.5)*dt;vx+=Math.cos(c.h)*45;vy+=Math.sin(c.h)*45;c.hunt=0}
+    c.x=clamp(c.x+vx*dt,60,W-60);c.y=clamp(c.y+vy*dt,60,H-60);
+    if(d<Rd*.6+c.r*.6&&!hid){
+      if(big){P.steal+=dt*(fm().armor||1);FEEL.trauma=Math.max(FEEL.trauma,.3);hurt(.22*dt,0);if(P.steal>1.3){P.steal=0;zap();if(P.m>1){hurt(0,1);c.m++;c.r=52+24*Math.sqrt(c.m)}else if(P.w<=0)evaporate()}}
+      else{const ad=grow(Math.ceil(c.m/2));P.w+=20*c.m;FEEL.pop=1;sMerge();floats.push({x:P.x,y:P.y-A,t:2,txt:growTxt(ad)});cnt("rivE");gain(20+5*c.m,P.x,P.y);unlock("pezgrande");rivals.splice(i,1)}}}
+  // avioneta siembranubes: te obliga a soltar agua y te encoge
+  seedT-=dt;if(!seedPlane&&seedT<=0&&save.lvl>=4&&P.m>=5&&!hid){const a=Math.random()*TAU;seedPlane={x:P.x-Math.cos(a)*1900,y:P.y-A-Math.sin(a)*1900,a,t:0,flee:0,hit:0,tr:0};
+    toast("Aviso","Avioneta siembranubes","Viene a deshacerte. Esquívala o recíbela con un rayo.",alarm)}
+  const sp=seedPlane;if(sp){sp.t+=dt;if(!sp.flee&&!sp.hit&&!hid){let da=Math.atan2(P.y-A-sp.y,P.x-sp.x)-sp.a;da=Math.atan2(Math.sin(da),Math.cos(da));sp.a+=clamp(da,-.7*dt,.7*dt)}
+    sp.x+=Math.cos(sp.a)*310*dt;sp.y+=Math.sin(sp.a)*310*dt;sp.tr-=dt;if(sp.tr<=0&&!sp.flee){sp.tr=.12;sparks.push({x:sp.x,y:sp.y,vx:rnd(-20,20),vy:rnd(10,50),t:.7})}
+    if(!sp.hit&&!sp.flee&&!hid&&dist(sp.x,sp.y,P.x,P.y-A)<Rd*.75){sp.hit=1;hurt(.3,1);feedback("medium",P.x,P.y-A);zap()}
+    if(sp.t>17||((sp.hit||sp.flee)&&sp.t>6&&dist(sp.x,sp.y,P.x,P.y)>1800)){seedPlane=null;seedT=rnd(70,110)}}
+  // cañones antinube del pueblo: solo si tienes mala fama
+  if(save.karma<=-15&&save.form!=="cirro")for(const k of CANNONS){k.t-=dt;const d=dist(k.x,k.y,P.x,P.y);if(k.t<=0&&d<780){k.t=2.6;const tx=P.x,ty=P.y-A*.5,l=dist(k.x,k.y,tx,ty)||1;
+      shots.push({x:k.x,y:k.y,vx:(tx-k.x)/l*300,vy:(ty-k.y)/l*300,t:3.2});noiseShot(.3,"lowpass",300,80,.3,AU.sfx)}}
+  for(let i=shots.length-1;i>=0;i--){const s=shots[i];s.t-=dt;s.x+=s.vx*dt;s.y+=s.vy*dt;
+    if(dist(s.x,s.y,P.x,P.y-A*.5)<Rd*.55){hurt(.1,0);unlock("canon");feedback("small",s.x,s.y);shots.splice(i,1)}else if(s.t<=0)shots.splice(i,1)}
+}
+
+/* ---------- Misiones y contadores ---------- */
+function grow(n){const k=12/(11+P.m);P.mf=(P.mf||0)+n*k;const add=Math.floor(P.mf);P.mf-=add;P.m+=add;return add}
+const growTxt=a=>a>0?"+"+a+" tamaño":"+"+Math.round(P.mf*100)+" % hacia tamaño "+(P.m+1);
+function cnt(k,n){save.c[k]=(save.c[k]||0)+(n===undefined?1:n)}
+const ct=k=>save.c[k]||0,hasA=k=>save.ach[k]?1:0,nUps=()=>Object.values(save.ups).reduce((a,b)=>a+b,0),nForms=()=>Object.keys(save.forms).length;
+let progT=1,rayT=[],misSig="";
+const CAPS=["","Una nube pequeña","Crecer","La tormenta","Elegir bando","Leyenda del cielo"];
+const MIS=[
+ [1,"a1","Bebe un buen trago en el lago o el río",()=>hasA("sorbo"),1],
+ [1,"a2","Recoge motas de vapor, los brillos blancos",()=>save.motes,15],
+ [1,"a3","Come nubes pasando por encima",()=>ct("eat"),3],
+ [1,"a4","Llueve un rato (espacio o botón Llover)",()=>Math.floor(ct("rain")),10],
+ [1,"a5","Riega un campo sembrado de la granja",()=>ct("fields"),1],
+ [1,"a6","Sube al nivel 2",()=>save.lvl,2],
+ [1,"a7","Elige tu primera mejora en el botón Mejoras",()=>nUps(),1],
+ [2,"b1","Crece hasta tamaño 5",()=>P.m,5],
+ [2,"b2","Sobrevuela zonas distintas del valle",()=>Object.keys(save.seen).length,5],
+ [2,"b3","Espanta a los cuervos de un sembrado",()=>hasA("espanta"),1],
+ [2,"b4","Moja a gente con tu lluvia",()=>save.wetP,5],
+ [2,"b5","Descubre una forma de nube nueva (mira el Nubario)",()=>nForms()-1,1],
+ [2,"b6","Recoge motas de vapor",()=>save.motes,60],
+ [2,"b7","Come nubes",()=>ct("eat"),12],
+ [3,"c1","Aprende el rayo en Mejoras (desde el nivel 3)",()=>up("rayo"),1],
+ [3,"c2","Lanza rayos con la tecla E o el botón Rayo",()=>ct("ray"),5],
+ [3,"c3","Absorbe una nube rival más pequeña que tú",()=>ct("rivE"),1],
+ [3,"c4","Apaga árboles en llamas con lluvia",()=>save.ext,5],
+ [3,"c5","Ahuyenta a la avioneta con un rayo",()=>ct("planes"),1],
+ [3,"c6","Llueve sobre el pueblo, la ciudad y el puerto",()=>hasA("pueblo")+hasA("ciudad")+hasA("puerto"),3],
+ [3,"c7","Sube al nivel 6",()=>save.lvl,6],
+ [4,"d1","Gánate fama en el valle, buena o mala",()=>Math.abs(save.karma),15],
+ [4,"d2","Descubre formas de nube",()=>nForms(),4],
+ [4,"d3","Encuentra la isla perdida, mar adentro",()=>hasA("isla"),1],
+ [4,"d4","Aprende el tornado en Mejoras (desde el nivel 7)",()=>up("tornado"),1],
+ [4,"d5","Crece hasta tamaño 12",()=>P.m,12],
+ [4,"d6","Vive días completos",()=>save.day,4],
+ [4,"d7","Rescata al náufrago con agua y con fuego",()=>hasA("rescate"),1],
+ [5,"e1","Sube al nivel 12",()=>save.lvl,12],
+ [5,"e2","Deshaz nubes rivales a rayos",()=>ct("rivK"),3],
+ [5,"e3","Vive las cuatro estaciones",()=>hasA("estaciones"),1],
+ [5,"e4","Completa el nubario",()=>nForms(),7],
+ [5,"e5","Crece hasta tamaño 25",()=>P.m,25],
+ [5,"e6","Consigue logros",()=>Object.keys(save.ach).length,80],
+ [5,"e7","Conviértete en nube bendita o en nube negra",()=>hasA("buena")+hasA("negra"),1]
+];
+const curCap=()=>{for(let c=1;c<=5;c++)if(MIS.some(m=>m[0]===c&&!save.mis[m[1]]))return c;return 6};
+const TIERS=[["eat",10,"come10"],["eat",50,"come50"],["eat",200,"come200"],["motes",500,"vapor500"],["motes",2000,"vapor2000"],["wetP",50,"moja50"],["wetP",150,"moja150"],
+ ["ray",25,"rayo25"],["ray",100,"rayo100"],["ext",100,"guarda100"],["fields",10,"campos10"],["fields",30,"campos30"],["harv",20,"cosecha20"],["rivE",5,"rivE5"],["rivE",20,"rivE20"],
+ ["rivK",5,"rivK5"],["dist",50000,"km50"],["dist",200000,"km200"],["day",3,"dias3"],["day",20,"dias20"],["lvl",15,"nivel15"],["lvl",20,"nivel20"],["m",40,"tam40"],["m",60,"tam60"],
+ ["planes",3,"planes3"],["nmote",50,"noctambula"],["galeT",30,"surf"],["rainSpr",60,"primavera"],["extSum",10,"verano"],["galeD",2000,"otono"],["snowV",3,"invierno"],
+ ["estCity",5,"f_estrato"],["cirroD",10000,"f_cirro"],["lentG",8,"f_lenticular"],["nimboF",3,"f_nimbo"],["niebP",10,"f_niebla"]];
+const tv=k=>k==="motes"?save.motes:k==="wetP"?save.wetP:k==="ext"?save.ext:k==="harv"?save.harv:k==="day"?save.day:k==="lvl"?save.lvl:k==="m"?P.m:ct(k);
+function checkProg(){if(!started)return;
+  for(const t of TIERS)if(!save.ach[t[2]]&&tv(t[0])>=t[1])unlock(t[2]);
+  if(save.karma>=15)unlock("querida");if(save.karma<=-15)unlock("temida");
+  const c=curCap();
+  if(c<=5)for(const m of MIS)if(m[0]===c&&!save.mis[m[1]]&&m[3]()>=m[4]){save.mis[m[1]]=1;gain(10+5*c,P.x,P.y);toast("Misión cumplida",m[2],"",blip.bind(null,7));
+    if(curCap()!==c){unlock("cap"+c);gain(40*c);const n=curCap();toast("Capítulo "+c+" completado",CAPS[c],n<=5?"Empieza el capítulo "+n+": "+CAPS[n]+".":"Has vivido una vida de nube completa.",fanfare)}persist()}
+  refreshMis()}
+function refreshMis(){const c=curCap(),ul=$("misList");
+  const list=c<=5?MIS.filter(m=>m[0]===c&&!save.mis[m[1]]).slice(0,3):[];
+  const sig=c+"|"+list.map(m=>m[1]+":"+Math.min(m[3](),m[4])).join(",");if(sig===misSig)return;misSig=sig;
+  $("misCap").textContent=c<=5?"Capítulo "+c+" · "+CAPS[c]:"Vida completa";ul.textContent="";
+  if(c>5){const li=document.createElement("li");li.textContent="Te quedan "+(ACH.length-Object.keys(save.ach).length)+" logros por descubrir.";ul.appendChild(li);return}
+  for(const m of list){const v=Math.min(m[3](),m[4]),li=document.createElement("li");li.append(m[2]);
+    if(m[4]>1){li.append(Object.assign(document.createElement("small"),{textContent:" "+v+"/"+m[4]}));const pb=document.createElement("div");pb.className="pb";const i=document.createElement("i");i.style.width=(v/m[4]*100)+"%";pb.appendChild(i);li.appendChild(pb)}
+    ul.appendChild(li)}}
+function buildMisAll(){const box=$("misAll"),c0=curCap();box.textContent="";
+  for(let c=1;c<=5;c++){const done=MIS.filter(m=>m[0]===c&&save.mis[m[1]]).length,tot=MIS.filter(m=>m[0]===c).length;
+    const h=document.createElement("h3");h.textContent="Capítulo "+c+" · "+CAPS[c];const sm=document.createElement("small");sm.textContent=c<c0?"completado":c===c0?done+"/"+tot:"por llegar";h.appendChild(sm);box.appendChild(h);
+    const ul=document.createElement("ul");for(const m of MIS.filter(m=>m[0]===c)){const li=document.createElement("li"),ok=!!save.mis[m[1]];li.className=ok?"done":c>c0?"later":"";
+      li.append(document.createElement("i"),Object.assign(document.createElement("span"),{textContent:m[2]+(m[4]>1&&!ok&&c===c0?" ("+Math.min(m[3](),m[4])+"/"+m[4]+")":"")}));ul.appendChild(li)}box.appendChild(ul)}}
+
+/* ---------- Viento y cielo ---------- */
+function windGlobal(){const th=.5+1.3*Math.sin(time/97)+.8*Math.sin(time/41+1);
+  let s=Math.max(6,42+26*Math.sin(time/53+2)+16*Math.sin(time/17))*(1+1.5*gale)*SEA.wind[season];
+  WGX=Math.cos(th)*s;WGY=Math.sin(th)*s-22*(1-dark)+18*dark;WSP=Math.hypot(WGX,WGY)}
+function windAt(x,y){const m=(y>coastY(x)?1.3:1)*(1+.22*Math.sin(time*.8+x/700+y/900));return [WGX*m,WGY*m]}
+function sky(){dark=tday<.60?0:tday<.70?(tday-.6)/.1:tday<.92?1:1-(tday-.92)/.08;
+  const w1=1-Math.abs(tday-.63)/.08,dd=Math.min(Math.abs(tday-.97),Math.abs(tday+1-.97)),w2=1-dd/.07;warm=Math.max(0,w1,w2)}
+
+/* ---------- Entrada ---------- */
+const cv=$("cv"),ctx=cv.getContext("2d");let vw=0,vh=0,dpr=1,zoom=1,zbase=1;const cam={x:P.x,y:P.y};let X0=0,Y0=0,VW=0,VH=0;
+function resize(){const g=$("game");vw=g.clientWidth;vh=g.clientHeight;dpr=Math.min(window.devicePixelRatio||1,2);
+  cv.width=Math.round(vw*dpr);cv.height=Math.round(vh*dpr);zbase=clamp(Math.min(vw,vh)/1150,.38,.85);zoom=zoom||zbase}
+window.addEventListener("resize",resize);resize();zoom=zbase;
+function toWorld(e){const r=cv.getBoundingClientRect();return[cam.x+(e.clientX-r.left-vw/2)/zoom,cam.y+(e.clientY-r.top-vh/2)/zoom]}
+function aim(e){const[wx,wy]=toWorld(e);P.tx=clamp(wx,40,W-40);P.ty=clamp(wy,40,H-40)}
+cv.addEventListener("pointerdown",e=>{if(!started||cfg.ctrl==="joy")return;pointerDown=true;try{cv.setPointerCapture(e.pointerId)}catch(_){}aim(e)});
+cv.addEventListener("pointermove",e=>{if(pointerDown)aim(e)});
+cv.addEventListener("pointerup",()=>pointerDown=false);cv.addEventListener("pointercancel",()=>pointerDown=false);
+window.addEventListener("keydown",e=>{if(!started)return;const k=e.key.toLowerCase();keys[k]=1;
+  if(k===" "){e.preventDefault();if(!e.repeat)toggleRain()}if(k==="e")strike();if(k==="q")startTornado();if(k==="shift")dash()});
+window.addEventListener("keyup",e=>{keys[e.key.toLowerCase()]=0});
+$("btnDash").onclick=dash;$("btnForm").onclick=()=>{refreshForms();$("formPanel").hidden=false};$("btnFormClose").onclick=()=>{$("formPanel").hidden=true};
+$("cNotes").checked=cfg.notes;$("cNotes").onchange=e=>{cfg.notes=e.target.checked;saveCfg()};
+$("selCtrl").value=cfg.ctrl;$("selCtrl").onchange=e=>{cfg.ctrl=e.target.value;saveCfg();applyCtrl()};
+$("misHead").onclick=()=>{buildMisAll();$("misPanel").hidden=false;paused=true};$("btnMisClose").onclick=()=>{$("misPanel").hidden=true;paused=false};
+cv.addEventListener("wheel",e=>{e.preventDefault();cfg.cam=clamp(cfg.cam+e.deltaY*.0007,0,1);$("sCam").value=Math.round(cfg.cam*100);saveCfg()},{passive:false});
+/* joystick */
+const joy={on:false,x:0,y:0,m:0},JE=$("joy"),KN=$("knob");
+function applyCtrl(){JE.hidden=cfg.ctrl!=="joy"}
+function joyMove(e){const r=JE.getBoundingClientRect(),R=r.width*.36;let dx=e.clientX-(r.left+r.width/2),dy=e.clientY-(r.top+r.height/2);const l=Math.hypot(dx,dy);
+  if(l>R){dx*=R/l;dy*=R/l}joy.x=dx/R;joy.y=dy/R;joy.m=Math.min(1,l/R);KN.style.transform="translate("+dx+"px,"+dy+"px)"}
+JE.addEventListener("pointerdown",e=>{if(!started)return;joy.on=true;try{JE.setPointerCapture(e.pointerId)}catch(_){}joyMove(e)});
+JE.addEventListener("pointermove",e=>{if(joy.on)joyMove(e)});
+const joyEnd=()=>{if(!joy.on)return;joy.on=false;joy.m=0;KN.style.transform="";P.tx=P.x;P.ty=P.y};JE.addEventListener("pointerup",joyEnd);JE.addEventListener("pointercancel",joyEnd);
+applyCtrl();
+$("btnRain").onclick=toggleRain;$("btnRay").onclick=strike;$("btnTor").onclick=startTornado;
+$("btnStart").onclick=()=>{$("intro").hidden=true;started=true;audioInit();setTimeout(()=>unlock("nace"),1500)};
+$("btnUp").onclick=openLv;$("btnLvClose").onclick=()=>{$("lvPanel").hidden=true;paused=false};
+$("btnCfg").onclick=()=>{$("cfgPanel").hidden=false};$("btnCfgClose").onclick=()=>{$("cfgPanel").hidden=true};
+for(const [id,k] of [["sVol","vol"],["sMus","mus"],["sAmb","amb"],["sSfx","sfx"],["sShake","shake"],["sCam","cam"]]){const el=$(id);el.value=Math.round(cfg[k]*100);
+  el.oninput=()=>{cfg[k]=el.value/100;applyVol();saveCfg()};if(k==="sfx")el.onchange=()=>sMerge();if(k==="shake")el.onchange=()=>feedback("medium")}
+$("cCalm").checked=cfg.calm;$("cCalm").onchange=e=>{cfg.calm=e.target.checked;saveCfg()};
+$("btnAch").onclick=()=>{$("achPanel").hidden=false};$("btnClose").onclick=()=>{$("achPanel").hidden=true;resetArm(false)};
+let armed=false;function resetArm(v){armed=v;$("btnReset").textContent=v?"Sí, borrar todo":"Empezar de cero";$("btnReset").classList.toggle("sure",v)}
+$("btnReset").onclick=()=>{if(!armed)return resetArm(true);try{localStorage.removeItem(KEY);localStorage.removeItem("vidanube.v1")}catch(e){}
+  save=fresh();season=0;misSig="";pendLv=0;refreshPts();rivals=[];seedPlane=null;refreshForms();P.m=1;P.w=30;P.x=P.tx=save.x;P.y=P.ty=save.y;people.forEach(p=>p.ever=0);isl.water=0;isl.fire=0;isl.sig=0;isl.ship=null;isl.gone=false;fogA=1;
+  resetArm(false);refreshAch();$("achPanel").hidden=true};
+if(Object.keys(save.ach).length)$("btnStart").textContent="Seguir flotando";
+
+/* ---------- Acciones ---------- */
+function toggleRain(){if(P.rain)stopRain();else if(fm().noRain)floats.push({x:P.x,y:P.y-alt(),t:2,txt:"demasiado alta para llover",bad:1});else if(P.w>1){P.rain=true;P.streak=0}}
+function stopRain(){if(!P.rain)return;P.rain=false;if(P.streak>=4&&dark<.5){rainbow={x:P.x,y:P.y,t:10};unlock("arcoiris")}P.streak=0}
+function scareCrows(){if(crows.st==="in"||crows.st==="eat"){crows.st="out";caw();gain(15);karma(4);unlock("espanta")}}
+function strike(){if(!stormy()||P.cool>0)return;P.cool=1.2*(fm().rayCd||1);P.w-=cap()*.1*(fm().rayCost||1)*(1-.15*(up("rayo")-1))*(save.karma<=-15?.5:1);const Rd=rad(),air=airTarget(Rd);
+  let tx=P.x,ty=P.y,same=false,sp=null,bd=Rd*.8;
+  if(!air)for(const s of SPECIAL){const d=dist(s.x,s.y,P.x,P.y);if(d<bd){bd=d;sp=s}}
+  if(air){tx=air[0];ty=air[1];lastStrike=null}
+  else if(sp){tx=sp.x;ty=sp.y;sp.hit();same=lastStrike===sp;lastStrike=sp}
+  else{let best=null;bd=Rd*.7;for(const t of trees){if(t.st===2)continue;const d=dist(t.x,t.y,P.x,P.y);if(d<bd){bd=d;best=t}}
+    if(best){tx=best.x;ty=best.y;best.hits++;same=best.hits>=2;if(best.st===0){best.st=1;best.fire=rnd(30,38);best.wet=0;karma(-2)}unlock("arbol");lastStrike=best}
+    else{const f=fields.find(f=>inRect(tx,ty,f)&&(f.st===1||f.st===2));
+      if(f){f.st=3;f.t=0;karma(-8);unlock("malanube")}
+      same=lastStrike&&lastStrike.g&&dist(lastStrike.x,lastStrike.y,tx,ty)<26;lastStrike={g:1,x:tx,y:ty}}}
+  if(same)unlock("doble");unlock("rayo");cnt("ray");if(save.form==="cumulonimbo"){rayT.push(time);rayT=rayT.filter(t=>time-t<10);if(rayT.length>=3)unlock("zeus")}if(dark>.8)unlock("nocturna");
+  if(dist(crows.x,crows.y,tx,ty)<700)scareCrows();
+  for(let i=0;i<7;i++){const a=Math.random()*TAU;bursts.push({x:tx,y:ty,h:a,t:3.5,ph:Math.random()*6})}
+  const sx=P.x,sy=P.y-alt(),pts=[[sx,sy]];for(let i=1;i<7;i++){const k=i/7;pts.push([lerp(sx,tx,k)+(Math.random()-.5)*36,lerp(sy,ty,k)+(Math.random()-.5)*14])}pts.push([tx,ty]);
+  bolts.push({pts,t:.4,x:tx,y:ty});flash=.5;FEEL.glow=1;feedback(sp?"large":"medium",tx,ty);thunder(!!sp)}
+function startTornado(){if(tornado||!up("tornado")||P.m<6||P.w<cap()*.6*(fm().torCost||1))return;P.w-=cap()*.45*(fm().torCost||1);const tt=12+4*up("tornado");tornado={x:P.x,y:P.y,t:tt,t0:tt};unlock("tornado");feedback("medium",P.x,P.y);whoosh()}
+
+/* ---------- Actualización ---------- */
+function walk(o,run,dt){if(o.wet>0)o.wet-=dt;if(o.wait>0){o.wait-=dt;return}
+  const dx=o.tx-o.x,dy=o.ty-o.y,d=Math.hypot(dx,dy);if(d<4){o.wait=o.wet>0?.2:1+Math.random()*5;pick(o);return}
+  const v=o.sp*(o.wet>0?run:1);o.x+=dx/d*v*dt;o.y+=dy/d*v*dt;o.ang=Math.atan2(dy,dx)}
+function goTo(o,x,y,v,dt){const dx=x-o.x,dy=y-o.y,d=Math.hypot(dx,dy);if(!(d>v*dt+2)){o.x=x;o.y=y;return true}o.x+=dx/d*v*dt;o.y+=dy/d*v*dt;o.ang=Math.atan2(dy,dx);return false}
+function update(dt){
+  time+=dt;frameN++;
+  const pd=dark,pt=tday;tday=(tday+dt/DAYLEN)%1;if(tday<pt)newDay();sky();
+  if(dark>=1)sawNight=true;if(sawNight&&dark===0&&pd>0){sawNight=false;if(started)unlock("amanecer")}
+  // vendaval
+  if(started){galeT-=dt;if(galeT<=0&&galeLeft<=0){galeLeft=38;galeT=rnd(150,260);toast("Tiempo","Se levanta vendaval","El viento manda durante un rato.");whoosh();feedback("small")}}
+  if(galeLeft>0)galeLeft-=dt;gale+=((galeLeft>0?1:0)-gale)*Math.min(1,dt*.5);
+  windGlobal();
+  // movimiento
+  if(joy.on&&joy.m>.12){const l=Math.hypot(joy.x,joy.y)||1;P.tx=clamp(P.x+joy.x/l*(80+320*joy.m),40,W-40);P.ty=clamp(P.y+joy.y/l*(80+320*joy.m),40,H-40)}
+  let kx=(keys["arrowright"]||keys["d"]?1:0)-(keys["arrowleft"]||keys["a"]?1:0),ky=(keys["arrowdown"]||keys["s"]?1:0)-(keys["arrowup"]||keys["w"]?1:0);
+  if(kx||ky){const l=Math.hypot(kx,ky);P.tx=clamp(P.x+kx/l*280,40,W-40);P.ty=clamp(P.y+ky/l*280,40,H-40)}
+  const [wx,wy]=windAt(P.x,P.y),wk=fm().windImm?0:.65,px=wx*wk,py=wy*wk,pl=Math.hypot(px,py);
+  const dx=P.tx-P.x,dy=P.ty-P.y,d=Math.hypot(dx,dy),maxV=Math.max(125,186-P.m*.8)*(1+.08*up("ligera"))*(fm().speed||1)*(P.dash>0?2.3:1)*(joy.on?.35+.65*joy.m:1);
+  let gvx=0,gvy=0;if(d>4){const sp=Math.min(maxV+pl,d*1.4);gvx=dx/d*sp;gvy=dy/d*sp}
+  let ox=gvx-px,oy=gvy-py;const ol=Math.hypot(ox,oy);if(ol>maxV){ox*=maxV/ol;oy*=maxV/ol}
+  P.vx+=(ox-P.vx)*Math.min(1,dt*2);P.vy+=(oy-P.vy)*Math.min(1,dt*2);
+  const GX=P.vx+px,GY=P.vy+py;P.gs=Math.hypot(GX,GY);
+  P.x=clamp(P.x+GX*dt,40,W-40);P.y=clamp(P.y+GY*dt,40,H-40);
+  if(started){cnt("dist",P.gs*dt);if(save.form==="cirro")cnt("cirroD",P.gs*dt);
+    if(gale>.6){cnt("galeT",dt);if(season===2)cnt("galeD",P.gs*dt);if(save.form==="lenticular"&&P.gs<30)cnt("lentG",dt)}}
+  if(started){if(P.gs>245)unlock("viento");
+    if(gale>.6&&P.gs>20&&(GX*wx+GY*wy)/(P.gs*(Math.hypot(wx,wy)||1))<-.5){P.contra+=dt;if(P.contra>6)unlock("contra")}else P.contra=0}
+  const z=zoneAt(P.x,P.y),Rd=rad(),C=cap(),A=alt();
+  const rcx=P.x+wx*.3,rcy=P.y+wy*.3; // la lluvia cae desplazada por el viento
+  if(started&&EXPL.includes(z)&&!save.seen[z]){save.seen[z]=1;gain(10,P.x,P.y);if(EXPL.every(k=>save.seen[k]))unlock("explorador")}
+  // beber
+  if(WATER[z]&&P.w<C&&!P.rain){{const w0=P.w;P.w=Math.min(C,P.w+dt*15*Math.sqrt(P.m)*(1+.35*up("sorbo")));P.drank=(P.drank||0)+P.w-w0;if(P.drank>40)unlock("sorbo")}if(Math.random()<dt*3)sip();
+    if(Math.random()<dt*5)floats.push({x:P.x+(Math.random()-.5)*Rd,y:P.y+(Math.random()-.5)*Rd*.6,t:1.2,vap:1})}
+  // humo
+  if(Math.random()<dt*7)smoke.push({x:CHIM.x,y:CHIM.y,t:0,r:10});
+  if(isl.fire>0&&Math.random()<dt*5)smoke.push({x:WOOD.x,y:WOOD.y,t:0,r:7});
+  for(const s of smoke){s.t+=dt;s.x+=(WGX*.5)*dt;s.y+=(WGY*.5-16)*dt}smoke=smoke.filter(s=>s.t<7);
+  if(dist(P.x,P.y-A*.5,CHIM.x+WGX,CHIM.y-60+WGY)<Rd+70){if(P.w<C)P.w=Math.min(C,P.w+dt*22);unlock("chimenea")}
+  // lluvia
+  const hit=o=>dist(o.x,o.y,rcx,rcy)<Rd*.9;
+  if(P.rain){P.streak+=dt;if(P.streak>2.5)unlock("gotas");cnt("rain",dt);if(season===0)cnt("rainSpr",dt);if(season===3&&z==="pueblo")cnt("snowV",dt);if(save.form==="estrato"&&z==="ciudad")cnt("estCity",dt);P.w-=dt*8*Math.sqrt(P.m)*(1-.15*up("fina"))*(fm().rainCost||1);rainZ[z]=(rainZ[z]||0)+dt;const snow=z==="montana"||season===3;
+    const n=Math.round(Math.min(40,3+P.m*.8)*(dt*60));for(let i=0;i<n;i++){const a=Math.random()*TAU,q=Math.sqrt(Math.random())*Rd*.95;
+      drops.push({x:rcx+Math.cos(a)*q,y:rcy+Math.sin(a)*q*.75,h:A*(.6+Math.random()*.4),snow,s:0})}
+    if(snow){snowLv=Math.min(1,snowLv+dt*.03);if(rainZ[z]>1.5)unlock("nevada")}
+    if(rainZ[z]>2.5){if(z==="pueblo"||z==="bosque"||z==="ciudad"||z==="puerto")unlock(z);if(WATER[z])unlock("mojado")}
+    if(dark<.6)for(const p of people)if(hit(p)){p.wet=7;if(!p.ever){p.ever=1;save.wetP++;gain(3);karma(-1);unlock("paraguas");if(save.wetP>=15)unlock("aguafiestas")}}
+    if(dark<.3)for(const k of kids)if(hit(k)){k.wet=6;unlock("recreo")}
+    for(const g of dogs)if(hit(g)){g.wet=6;unlock("perro")}
+    for(const c of cows)if(!c.fly&&hit(c)){c.wet=6;unlock("vaca")}
+    for(const s of sheep)if(hit(s)){s.wet=6;unlock("oveja")}
+    for(const b of boats)if(hit(b))unlock("marinero");
+    for(const f of flocks)if(hit(f)){if(f.sc<=0)unlock("desbandada");f.sc=4}
+    if((crows.st==="eat"||crows.st==="in")&&hit(crows))scareCrows();
+    for(const t of trees){if(Math.abs(t.x-rcx)>Rd||Math.abs(t.y-rcy)>Rd||!hit(t))continue;t.wet=10;
+      if(t.st===1){t.fire-=dt*9*(fm().fire||1);if(t.fire<=.6){t.st=0;t.fire=0;save.ext++;if(season===1)cnt("extSum");gain(2);karma(1);unlock("bombero");if(save.ext>=20)unlock("guarda")}}
+      else if(t.st===2){t.rg+=dt;if(t.rg>4){t.st=0;t.r=5;t.rg=0;t.dead=0;t.hits=0;gain(3);karma(1);unlock("rebrote")}}}
+    for(const f of fields){const cx=clamp(rcx,f.x,f.x+f.w),cy=clamp(rcy,f.y,f.y+f.h);
+      if(f.st===1&&dist(cx,cy,rcx,rcy)<Rd*.8){f.g=Math.min(1,f.g+dt*.13*SEA.grow[season]*(fm().grow||1));if(f.g>=1){f.st=2;f.t=0;f.mine=1;cnt("fields");if(save.form==="nimbo")cnt("nimboF");gain(15,f.x+f.w/2,f.y+f.h/2);karma(5);unlock("riego")}}}
+    if(dist(rcx,rcy,PARK.x+PARK.w/2,PARK.y+PARK.h/2)<Rd&&rainZ.ciudad>1)unlock("parque");
+    if(dist(rcx,rcy,STAD.x+STAD.w/2,STAD.y+STAD.h/2)<Rd&&rainZ.ciudad>1)unlock("partido");
+    if(camp.fire&&dist(rcx,rcy,CAMP.x,CAMP.y)<Rd*.9){camp.wetT+=dt;if(camp.wetT>1.5){camp.fire=0;camp.t=90;camp.wetT=0;karma(-2);unlock("camping")}}
+    if(!isl.gone&&dist(rcx,rcy,ISL.x,ISL.y)<Rd+70){isl.water=Math.min(1,isl.water+dt*.14);if(isl.water>=1&&!save.ach.aguadulce){gain(30);karma(10);unlock("aguadulce")}
+      if(isl.fire>0&&dist(rcx,rcy,WOOD.x,WOOD.y)<Rd*.9)isl.fire=Math.max(0,isl.fire-dt*12)}
+    if(P.w<=0){P.w=0;unlock("seca");stopRain()}
+  }
+  for(const dr of drops){if(dr.h>0)dr.h-=dt*(dr.snow?150:520);else dr.s+=dt}
+  drops=drops.filter(d=>d.s<(d.snow?1.2:.25));
+  if(!camp.fire){camp.t-=dt;if(camp.t<=0)camp.fire=1}
+  // tamaño, tormenta, cima
+  if(P.m>=5)unlock("grande");if(P.m>=12)unlock("gigante");if(P.m>=25)unlock("super");if(stormy())unlock("tormenta");
+  P.cool=Math.max(0,P.cool-dt);flash=Math.max(0,flash-dt*1.6);cityOff=Math.max(0,cityOff-dt);
+  for(const b of bolts)b.t-=dt;bolts=bolts.filter(b=>b.t>0);
+  if(dist(P.x,P.y,PEAK.x,PEAK.y)<90&&P.gs<30){P.peakT+=dt;if(P.peakT>5)unlock("cumbre")}else P.peakT=0;
+  // fuego: arde, se propaga a favor del viento, y el bosque rebrota muy despacio
+  nearFire=0;const wn=WSP/60,wdx=WGX/(WSP||1),wdy=WGY/(WSP||1);
+  for(const t of trees){
+    if(t.wet>0)t.wet-=dt;
+    if(t.st===0){if(t.r<t.r0)t.r=Math.min(t.r0,t.r+dt*.8);continue}
+    if(t.st===2){t.dead+=dt;if(t.dead>320){t.st=0;t.r=5;t.dead=0;t.rg=0;t.hits=0}continue}
+    t.fire-=dt;if(Math.abs(t.x-P.x)<600&&Math.abs(t.y-P.y)<500)nearFire++;
+    for(const o of t.nb){if(o.st!==0||o.wet>0)continue;const ddx=o.x-t.x,ddy=o.y-t.y,dl=Math.hypot(ddx,ddy)||1;
+      const k=Math.max(.25,1+1.6*wn*((ddx*wdx+ddy*wdy)/dl));if(Math.random()<dt*.03*k*SEA.fire[season]){o.st=1;o.fire=rnd(16,24)}}
+    if(smoke.length<170&&Math.random()<dt*.35)smoke.push({x:t.x,y:t.y,t:0,r:8});
+    if(t.fire<=0){t.st=2;t.dead=0;t.rg=0;save.burnt++;if(save.burnt>=150)unlock("incendio")}}
+  // nubes: derivan con el viento, nacen de térmicas, se deshacen
+  for(let i=clouds.length-1;i>=0;i--){const c=clouds[i];c.age+=dt;
+    if(!c.fixed){const [cwx,cwy]=windAt(c.x,c.y);c.x+=cwx*dt;c.y+=cwy*dt;
+      if(c.age>c.life+4||c.x<-260||c.x>W+260||c.y<-260||c.y>H+260){clouds.splice(i,1);continue}}
+    if(started&&c.age>1.5&&dist(c.x,c.y,P.x,P.y)<(Rd*.8+c.r*.5)*(fm().eat||1)){const ad=grow(c.m);P.w+=18*c.m;
+      floats.push({x:P.x,y:P.y-A+30,t:1.8,txt:growTxt(ad)});FEEL.pop=1;sMerge();cnt("eat");gain((10+5*(c.m-1))*(fm().xpEat||1),P.x,P.y-A);unlock("union");if(c.th&&c.age<30)unlock("termica");
+      if(c.fixed){c.fixed.t=55;unlock("gorro")}clouds.splice(i,1);persist()}}
+  for(const o of oro)if(o.t>0){o.t-=dt;if(o.t<=0)clouds.push(mkCloud(o.x,o.y,{fixed:o,m:2,r:66}))}
+  spawnT-=dt;if(spawnT<=0){spawnT=1.4;if(clouds.length<42){const v=Math.random();let x,y,o={};
+    if(v<.4&&dark<.5){const s=[[CITY.x+980,CITY.y+630],[2100,4500],[LAKE.x,LAKE.y],[5900,1750],[VILLAGE.x,VILLAGE.y],[3000,6500],[7000,6600],[P.x,P.y]][(Math.random()*8)|0];
+      x=s[0]+rnd(-450,450);y=s[1]+rnd(-450,450);o.th=1}
+    else if(v<.85){for(let k=0;k<8;k++){const e=(Math.random()*4)|0;x=e===0?-150:e===1?W+150:Math.random()*W;y=e===2?-150:e===3?H+150:Math.random()*H;
+        const nx=e===0?1:e===1?-1:0,ny=e===2?1:e===3?-1:0;if(nx*WGX+ny*WGY>0)break}}
+    else{x=Math.random()*W;y=Math.random()*H}
+    if(dist(x,y,P.x,P.y)>Rd+160)clouds.push(mkCloud(clamp(x,-200,W+200),clamp(y,-200,H+200),o))}}
+  // gente y animales
+  for(const p of people)walk(p,2.2,dt);for(const k of kids)walk(k,1.5,dt);for(const g of dogs)walk(g,1.6,dt);
+  for(const s of sheep)walk(s,3,dt);for(const q of deer)walk(q,1,dt);for(const q of ducks)walk(q,1,dt);
+  if(!isl.gone&&!(isl.ship&&isl.ship.st>0))walk(castaway,1.5,dt);
+  for(const c of cows){if(c.fly){const f=c.fly;f.t+=dt;f.a+=dt*5;c.x=clamp(c.x+f.vx*dt,60,W-60);c.y=clamp(c.y+f.vy*dt,60,H-60);if(f.t>4.5){c.fly=0;c.home={c:1,x:c.x,y:c.y,r:70};pick(c)}}else walk(c,1.4,dt)}
+  for(const c of cars){c.p+=c.v*dt/(c.hor?CITY.w:CITY.h);if(c.p>1){c.p=1;c.v=-c.v}if(c.p<0){c.p=0;c.v=-c.v}}
+  for(const b of boats){const [bx,by]=windAt(b.x,b.y);b.vx+=(bx*.45-b.vx)*dt*.5;b.vy+=(by*.3-b.vy)*dt*.5;b.x+=b.vx*dt;b.y+=b.vy*dt;
+    const top=coastY(b.x)+150;if(b.y<top){b.y=top;b.vy=Math.abs(b.vy)*.3}if(b.y>H-90){b.y=H-90;b.vy=-Math.abs(b.vy)*.3}
+    if(b.x>W+60)b.x=-60;if(b.x<-60)b.x=W+60;b.a=Math.atan2(b.vy,b.vx)}
+  for(const g of gulls)g.a+=g.w*dt;
+  for(const f of flocks){f.sc=Math.max(0,f.sc-dt);f.turn+=(Math.random()-.5)*dt*1.5;f.turn*=.98;f.h+=f.turn*dt*.6+(f.sc>0?dt*1.2:0);
+    const v=105+(f.sc>0?90:0);f.x+=(Math.cos(f.h)*v+WGX*.5)*dt;f.y+=(Math.sin(f.h)*v+WGY*.5)*dt;
+    if(f.x<-200)f.x=W+200;if(f.x>W+200)f.x=-200;if(f.y<-200)f.y=H+100;if(f.y>H+200)f.y=-200}
+  for(const b of bursts){b.t-=dt;b.x+=Math.cos(b.h)*130*dt;b.y+=Math.sin(b.h)*130*dt}bursts=bursts.filter(b=>b.t>0);
+  for(const s of sparks){s.t-=dt;s.x+=s.vx*dt;s.y+=s.vy*dt;s.vx*=.94;s.vy*=.94}sparks=sparks.filter(s=>s.t>0);
+  // campos, granjero y cuervos
+  for(const f of fields){f.t+=dt;if(f.st===3&&f.t>50){f.st=0;f.t=0;f.g=0}}
+  const F=farmer;
+  if(F.st==="idle"){if(dark<.3){const h=fields.find(f=>f.st===2&&f.t>16&&!f.busy),s=h||fields.find(f=>f.st===0&&f.t>12&&!f.busy);
+      if(s){F.f=s;F.job=h?"harvest":"sow";F.st="go";s.busy=1}}
+    if(F.st==="idle")goTo(F,2790,4700,70,dt)}
+  else if(F.st==="go"){if(goTo(F,F.f.x+F.f.w/2,F.f.y+F.f.h/2,95,dt)){F.st="work";F.work=4}}
+  else{F.work-=dt;F.ang+=dt*3;if(F.work<=0){const f=F.f;f.busy=0;
+      if(F.job==="harvest"&&f.st===2){f.st=0;f.t=0;f.g=0;floats.push({x:f.x+f.w/2,y:f.y+f.h/2,t:2.2,txt:"+1 cosecha"});if(f.mine){f.mine=0;save.harv++;gain(25);karma(3);if(save.harv>=6)unlock("cosecha")}}
+      else if(F.job==="sow"&&f.st===0){f.st=1;f.g=0;f.seed=1;f.t=0}
+      F.st="idle"}}
+  const K=crows;K.ph+=dt;
+  if(K.st==="away"){K.t-=dt;if(K.t<=0){const f=dark<.4&&fields.find(f=>f.st===1&&f.g<.85);if(f){K.f=f;K.st="in"}else K.t=12}}
+  else if(K.st==="in"){if(goTo(K,K.f.x+K.f.w/2,K.f.y+K.f.h/2,150,dt))K.st="eat"}
+  else if(K.st==="eat"){const f=K.f;if(f.st!==1)K.st="out";else{f.seed-=dt/24;if(f.seed<=0){f.st=0;f.t=0;f.g=0;K.st="out";if(started){karma(-4);unlock("cuervos")}}}}
+  else if(goTo(K,ROOST.x,ROOST.y,170,dt)){K.st="away";K.t=rnd(35,65)}
+  // tornado
+  if(tornado){const T=tornado;T.t-=dt;FEEL.trauma=Math.max(FEEL.trauma,.2);T.x+=(P.x-T.x)*Math.min(1,dt*1.2);T.y+=(P.y-T.y)*Math.min(1,dt*1.2);
+    for(const c of cows)if(!c.fly&&dist(c.x,c.y,T.x,T.y)<75){const a=Math.random()*TAU;c.fly={t:0,a:0,vx:Math.cos(a)*90,vy:Math.sin(a)*90-30};unlock("voladora");karma(-3);gain(10);moo();feedback("small",c.x,c.y)}
+    for(const p of people)if(dist(p.x,p.y,T.x,T.y)<70)p.wet=7;
+    if(dist(K.x,K.y,T.x,T.y)<200)scareCrows();
+    if(T.t<=0)tornado=null}
+  // avión
+  planeT-=dt;if(!plane&&planeT<=0&&started){const a=Math.random()*TAU,qx=P.x+(Math.random()-.5)*360,qy=P.y-A+(Math.random()-.5)*360;plane={x:qx-Math.cos(a)*2600,y:qy-Math.sin(a)*2600,a,d:0}}
+  if(plane){plane.x+=Math.cos(plane.a)*360*dt;plane.y+=Math.sin(plane.a)*360*dt;plane.d+=360*dt;
+    if(dist(plane.x,plane.y,P.x,P.y-A)<Rd*.8)unlock("avion");if(plane.d>5200){plane=null;planeT=rnd(30,55)}}
+  world2(dt,z,Rd,A,C);
+  if(started&&save.form==="niebla"&&dark<.6)for(const p of people)if(Math.abs(p.x-P.x)<Rd&&dist(p.x,p.y,P.x,P.y)<Rd*.9){p.wet=7;if(!p.ever){p.ever=1;save.wetP++;cnt("niebP");gain(3);karma(-1);unlock("paraguas")}}
+  progT-=dt;if(progT<=0){progT=.5;checkProg()}
+  // isla y náufrago
+  if(started&&!save.found&&dist(P.x,P.y,ISL.x,ISL.y)<340){save.found=1;unlock("isla")}
+  if(save.found&&fogA>0)fogA=Math.max(0,fogA-dt*.25);
+  if(!isl.gone){if(isl.fire>0){isl.fire-=dt;isl.sig+=dt}
+    if(!isl.ship&&isl.sig>9&&isl.water>=1&&isl.fire>0)isl.ship={x:W+200,y:ISL.y+250,st:0,t:0};
+    const sh=isl.ship;if(sh){if(sh.st===0){if(goTo(sh,ISL.x+30,ISL.y+250,80,dt)){sh.st=1;sh.t=5}}
+      else if(sh.st===1){goTo(castaway,ISL.x+30,ISL.y+islR(Math.PI/2)-10,30,dt);sh.t-=dt;if(sh.t<=0){sh.st=2;save.rescued=1;gain(120);karma(30);unlock("rescate")}}
+      else if(goTo(sh,W+300,ISL.y+350,80,dt)){isl.ship=null;isl.gone=true}}}
+  if(rainbow){rainbow.t-=dt;if(rainbow.t<=0)rainbow=null}
+  for(const f of floats){f.t-=dt;f.y-=dt*(f.vap?40:22)}floats=floats.filter(f=>f.t>0);
+  P.w=clamp(P.w,0,C);saveT+=dt;if(saveT>8&&started){saveT=0;persist()}
+  // cámara: se aleja un poco cuando la nube es grande
+  zoom+=(zbase*lerp(1.35,.65,cfg.cam)*clamp(156/(Rd+80),.34,1)-zoom)*Math.min(1,dt*1.2);
+  cam.x+=(P.x-cam.x)*Math.min(1,dt*3);cam.y+=(P.y-A*.45-cam.y)*Math.min(1,dt*3);
+  cam.x=clamp(cam.x,vw/2/zoom,W-vw/2/zoom);cam.y=clamp(cam.y,vh/2/zoom,H-vh/2/zoom);
+  X0=cam.x-vw/2/zoom;Y0=cam.y-vh/2/zoom;VW=vw/zoom;VH=vh/zoom;
+  while(streaks.length<46)streaks.push({x:X0+Math.random()*VW,y:Y0+Math.random()*VH,l:Math.random()*1.6});
+  for(const s of streaks){s.l-=dt;const [sx,sy]=windAt(s.x,s.y);s.x+=sx*2.4*dt;s.y+=sy*2.4*dt;
+    if(s.l<=0||s.x<X0-50||s.x>X0+VW+50||s.y<Y0-50||s.y>Y0+VH+50){s.x=X0+Math.random()*VW;s.y=Y0+Math.random()*VH;s.l=1.6}}
+  hud(z);
+}
+let hz="",hw=-1,hm=-1,hudT=0;
+function hud(z){
+  if(z!==hz){hz=z;$("zone").textContent=ZNAME[z]}
+  const w=Math.round(P.w);if(w!==hw){hw=w;$("wTxt").textContent=w;$("barf").style.width=(P.w/cap()*100)+"%"}
+  if(P.m!==hm){hm=P.m;$("mTxt").textContent=P.m}
+  const br=$("btnRain");br.classList.toggle("on",P.rain);$("rainSub").textContent=P.rain?"parar":(P.w<=1?"sin agua":"espacio");
+  const ry=$("btnRay"),st=stormy();ry.hidden=!up("rayo");ry.disabled=!st;ry.classList.toggle("ready",st);$("raySub").textContent=fm().noRay?"otra forma":P.m<3?"tamaño 3":(st?"tecla E":"más agua");
+  const to=$("btnTor"),tk=P.m>=6&&P.w>=cap()*.6*(fm().torCost||1)&&!tornado;to.hidden=!up("tornado");to.disabled=!tk;to.classList.toggle("ready",tk);
+  $("torSub").textContent=P.m<6?"tamaño 6":(tornado?"girando":(tk?"tecla Q":"más agua"));
+  const da=$("btnDash");da.hidden=!up("rafaga");da.disabled=P.dashCd>0;da.classList.toggle("ready",P.dashCd<=0);$("dashSub").textContent=P.dashCd>0?Math.ceil(P.dashCd)+" s":"mayús";
+  if(frameN-hudT>12){hudT=frameN;const kmh=Math.round(WSP*.45);$("windArrow").style.transform="rotate("+Math.atan2(WGY,WGX)+"rad)";
+    $("windTxt").textContent=kmh+" km/h";const wl=$("windLbl");wl.textContent=kmh<14?"Brisa":kmh<40?"Viento":"Vendaval";wl.classList.toggle("gale",kmh>=40);
+    const hr=(6+tday*24)%24,hh=Math.floor(hr),mm=Math.floor((hr-hh)*6)*10;$("clock").textContent=(hh<10?"0":"")+hh+":"+(mm<10?"0":"")+mm;
+    $("sun").className=dark>.5?"moon":"";$("seasonTxt").textContent=SEA.name[season];
+    $("lvTxt").textContent=save.lvl;$("xpf").style.width=Math.min(100,save.xp/need(save.lvl)*100)+"%";
+    const kt=$("karmaTxt");kt.textContent=KT(save.karma);kt.className=save.karma>=15?"good":save.karma<=-15?"bad":"";
+    $("formTxt").textContent=FORMS.find(f=>f[0]===save.form)[1]}
+}
+
+/* ---------- Dibujo ---------- */
+function mkGlow(c){const g=document.createElement("canvas");g.width=g.height=64;const x=g.getContext("2d"),gr=x.createRadialGradient(32,32,0,32,32,32);
+  gr.addColorStop(0,"rgba("+c+",.9)");gr.addColorStop(.35,"rgba("+c+",.35)");gr.addColorStop(1,"rgba("+c+",0)");x.fillStyle=gr;x.fillRect(0,0,64,64);return g}
+const GA=mkGlow("255,190,90"),GW=mkGlow("210,235,255"),GF=mkGlow("255,120,40");
+const glow=(s,x,y,r)=>ctx.drawImage(s,x-r,y-r,r*2,r*2);
+function puffPath(x,y,r,pf,sy,k){ctx.beginPath();for(const p of pf){const px=x+Math.cos(p.a)*p.d*r*1.25,py=y+Math.sin(p.a)*p.d*r*.8*sy,pr=p.s*r*(k||1);ctx.moveTo(px+pr,py);ctx.arc(px,py,pr,0,TAU)}}
+function drawCloud(x,y,r,pf,dk){
+  ctx.fillStyle=mix(mix("#b9b8ae","#2c343c",dk),"#b0705f",warm*.45);puffPath(x,y+r*.12,r,pf,1);ctx.fill();
+  ctx.fillStyle=mix(mix("#ece6d8","#56606a",dk),"#f0b592",warm*.5);puffPath(x,y,r,pf,1);ctx.fill();
+  ctx.fillStyle=mix(mix("#fbf7ec","#6f7a84",dk),"#ffd9b0",warm*.5);puffPath(x-r*.1,y-r*.1,r,pf,1,.62);ctx.fill();
+}
+function poly(pts){ctx.beginPath();for(const p of pts)ctx.lineTo(p[0],p[1]);ctx.closePath()}
+function hex(x,y,r,rot){ctx.beginPath();for(let i=0;i<6;i++)ctx.lineTo(x+Math.cos(rot+i*TAU/6)*r,y+Math.sin(rot+i*TAU/6)*r);ctx.closePath()}
+function bird(x,y,h,ph,col,sc){const c=Math.cos(h),s=Math.sin(h),sp=(4+5*Math.abs(Math.sin(time*9+ph)))*sc,bk=3*sc;
+  ctx.strokeStyle="rgba(6,12,16,.18)";ctx.beginPath();ctx.moveTo(x+26-c*bk+s*sp,y+40-s*bk-c*sp);ctx.lineTo(x+26,y+40);ctx.lineTo(x+26-c*bk-s*sp,y+40-s*bk+c*sp);ctx.stroke();
+  ctx.strokeStyle=col;ctx.beginPath();ctx.moveTo(x-c*bk+s*sp,y-s*bk-c*sp);ctx.lineTo(x+c*2*sc,y+s*2*sc);ctx.lineTo(x-c*bk-s*sp,y-s*bk+c*sp);ctx.stroke()}
+function person(p,al,body,head){
+  if(p.wet>0){ctx.fillStyle=p.uc;ctx.beginPath();ctx.arc(p.x,p.y,10,0,TAU);ctx.fill();ctx.strokeStyle="rgba(0,0,0,.3)";ctx.lineWidth=1;ctx.beginPath();
+    for(let i=0;i<4;i++){const a=i*Math.PI/4;ctx.moveTo(p.x-Math.cos(a)*10,p.y-Math.sin(a)*10);ctx.lineTo(p.x+Math.cos(a)*10,p.y+Math.sin(a)*10)}ctx.stroke()}
+  else{ctx.fillStyle=body;ctx.beginPath();ctx.ellipse(p.x,p.y,6.5,4.5,p.ang+Math.PI/2,0,TAU);ctx.fill();ctx.fillStyle=head;ctx.beginPath();ctx.arc(p.x,p.y,3.4,0,TAU);ctx.fill()}}
+function rotor(x,y,n,len,ang,col){ctx.strokeStyle=col;ctx.lineWidth=5;ctx.lineCap="round";ctx.beginPath();for(let i=0;i<n;i++){const a=ang+i*TAU/n;ctx.moveTo(x,y);ctx.lineTo(x+Math.cos(a)*len,y+Math.sin(a)*len)}ctx.stroke();ctx.lineCap="butt"}
+function boat(b,sail){ctx.save();ctx.translate(b.x,b.y+Math.sin(time*1.5+b.x)*2);ctx.rotate(b.a);
+  ctx.fillStyle="#6b4f37";poly([[20,0],[8,-8],[-16,-7],[-16,7],[8,8]]);ctx.fill();ctx.fillStyle="#8a6a4a";poly([[12,0],[6,-4],[-12,-4],[-12,4],[6,4]]);ctx.fill();
+  if(sail){ctx.fillStyle="#ece6d8";poly([[6,0],[-12,-16],[-12,0]]);ctx.fill();ctx.fillStyle="#cfc8b6";poly([[6,0],[-12,13],[-12,0]]);ctx.fill()}
+  if(b.fisher){ctx.fillStyle="#d9b48c";ctx.beginPath();ctx.arc(-2,0,3.4,0,TAU);ctx.fill();ctx.strokeStyle="#2a2623";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(26,-18);ctx.stroke()}
+  ctx.restore()}
+let rotA=0;
+function draw(dt){
+  genBudget=3;rotA+=dt*WSP*.045;
+  const zz=zoom*(1+.035*Math.sin(FEEL.punch*Math.PI)),vwW=vw/zz,vhW=vh/zz,x0=cam.x-vwW/2+FEEL.ox/zz,y0=cam.y-vhW/2+FEEL.oy/zz,k=dpr*zz;
+  ctx.setTransform(1,0,0,1,0,0);ctx.imageSmoothingEnabled=true;ctx.fillStyle="#1b3d4b";ctx.fillRect(0,0,cv.width,cv.height);
+  for(let cx=Math.max(0,Math.floor(x0/CH));cx<=Math.min(Math.ceil(W/CH)-1,Math.floor((x0+vwW)/CH));cx++)
+    for(let cy=Math.max(0,Math.floor(y0/CH));cy<=Math.min(Math.ceil(H/CH)-1,Math.floor((y0+vhW)/CH));cy++){
+      const a=Math.round((cx*CH-x0)*k),b=Math.round((cy*CH-y0)*k),a2=Math.round(((cx+1)*CH-x0)*k),b2=Math.round(((cy+1)*CH-y0)*k),c=getChunk(cx,cy);
+      if(c)ctx.drawImage(c.cvs,a,b,a2-a,b2-b);else{ctx.fillStyle="#44604c";ctx.fillRect(a,b,a2-a,b2-b)}}
+  ctx.setTransform(k,0,0,k,-x0*k,-y0*k);
+  const vis=(x,y,m)=>x>x0-m&&x<x0+vwW+m&&y>y0-m&&y<y0+vhW+m;
+  // destellos de agua
+  ctx.strokeStyle="rgba(150,200,205,.25)";ctx.lineWidth=2;ctx.beginPath();
+  if(vis(LAKE.x,LAKE.y,900))for(let i=0;i<50;i++){const gx=LAKE.x+Math.sin(i*12.9)*460,gy=LAKE.y+Math.cos(i*7.3)*400,l=8+6*Math.sin(time*1.2+i);
+    if(dist(gx,gy,LAKE.x,LAKE.y)<LAKE.r*.72){ctx.moveTo(gx-l,gy);ctx.lineTo(gx+l,gy)}}
+  if(y0+vhW>6300)for(let i=0;i<260;i++){const gx=(i*733)%W,gy=6480+((i*397)%1080),l=10+7*Math.sin(time+i);if(vis(gx,gy,30)&&gy>coastY(gx)+40){ctx.moveTo(gx-l,gy);ctx.lineTo(gx+l,gy)}}
+  ctx.stroke();
+  // campos
+  for(const f of fields)if(vis(f.x+f.w/2,f.y+f.h/2,360)){
+    const base=f.st===3?"#2a2623":f.st===2?"#c2a24a":f.st===1?mix("#6b5a3c","#5f8a45",f.g):"#6b5a3c";
+    const row=f.st===3?"#1d1a18":f.st===2?"#a88a3a":f.st===1?mix("#5c4d33","#7aa650",Math.max(.25,f.g)):"#5c4d33";
+    ctx.fillStyle=base;ctx.fillRect(f.x,f.y,f.w,f.h);ctx.strokeStyle=row;ctx.lineWidth=f.st===1?3+f.g*4:4;ctx.globalAlpha=f.st===1?.4+.6*f.seed:1;
+    ctx.beginPath();for(let x=f.x+16;x<f.x+f.w;x+=22){ctx.moveTo(x,f.y+8);ctx.lineTo(x,f.y+f.h-8)}ctx.stroke();ctx.globalAlpha=1}
+  // molino y aerogeneradores
+  if(vis(MILL.x,MILL.y,120)){ctx.fillStyle="rgba(8,14,18,.3)";ctx.beginPath();ctx.arc(MILL.x+8,MILL.y+10,24,0,TAU);ctx.fill();ctx.fillStyle="#b7ad94";ctx.beginPath();ctx.arc(MILL.x,MILL.y,24,0,TAU);ctx.fill();
+    ctx.fillStyle="#8a3f33";ctx.beginPath();ctx.arc(MILL.x,MILL.y,15,0,TAU);ctx.fill();rotor(MILL.x,MILL.y,4,58,rotA,"#e7dcc2")}
+  for(const t of TURB)if(vis(t[0],t[1],120)){ctx.strokeStyle="rgba(8,14,18,.25)";ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(t[0],t[1]);ctx.lineTo(t[0]+50,t[1]+70);ctx.stroke();
+    ctx.fillStyle="#d8d2c2";ctx.beginPath();ctx.arc(t[0],t[1],8,0,TAU);ctx.fill();rotor(t[0],t[1],3,62,rotA*1.4+t[0],"#ece6d8")}
+  // montañas
+  for(const q of peaks)if(vis(q.x,q.y,260)){const cx=q.x+q.ox*q.s,cy=q.y+q.oy*q.s,n=q.v.length;
+    for(let i=0;i<n;i++){const a=q.v[i],b=q.v[(i+1)%n],mid=(a.a+b.a+(i===n-1?TAU:0))/2,sh=.5+.5*Math.cos(mid+2.2);
+      ctx.fillStyle=mix("#3a3f44","#8b8f8d",sh);poly([[cx,cy],[q.x+Math.cos(a.a)*a.d*q.s,q.y+Math.sin(a.a)*a.d*q.s],[q.x+Math.cos(b.a)*b.d*q.s,q.y+Math.sin(b.a)*b.d*q.s]]);ctx.fill()}
+    const sc=(q.main?.38:(q.s>100?.22:0))+Math.max(snowLv,season===3?1:0)*.5;
+    if(sc>0)for(let i=0;i<n;i++){const a=q.v[i],b=q.v[(i+1)%n],mid=(a.a+b.a+(i===n-1?TAU:0))/2,sh=.5+.5*Math.cos(mid+2.2);
+      ctx.fillStyle=mix("#a3afb5","#f0f2ee",sh);poly([[cx,cy],[cx+Math.cos(a.a)*a.d*q.s*sc,cy+Math.sin(a.a)*a.d*q.s*sc],[cx+Math.cos(b.a)*b.d*q.s*sc,cy+Math.sin(b.a)*b.d*q.s*sc]]);ctx.fill()}}
+  // camping
+  if(vis(CAMP.x,CAMP.y,200)){const tc=["#b5583f","#d9a441","#5fb0c0"];for(let i=0;i<3;i++){const a=i*2.1+.4,tx=CAMP.x+Math.cos(a)*70,ty=CAMP.y+Math.sin(a)*60;
+      ctx.fillStyle=tc[i];poly([[tx-20,ty-14],[tx+20,ty-14],[tx+20,ty+14],[tx-20,ty+14]]);ctx.fill();ctx.fillStyle="rgba(0,0,0,.25)";ctx.fillRect(tx-20,ty,40,14)}
+    ctx.fillStyle="#5a5148";ctx.beginPath();ctx.arc(CAMP.x,CAMP.y,11,0,TAU);ctx.fill();
+    if(camp.fire){ctx.fillStyle="#e2a94b";ctx.beginPath();ctx.arc(CAMP.x,CAMP.y,5+2*Math.sin(time*11),0,TAU);ctx.fill();ctx.fillStyle="#d5562f";ctx.beginPath();ctx.arc(CAMP.x+1,CAMP.y,2.5,0,TAU);ctx.fill()}}
+  // isla
+  if(vis(ISL.x,ISL.y,400)){
+    for(const [ox,oy] of [[-70,-50],[30,-80],[80,40],[-30,20]]){const px=ISL.x+ox,py=ISL.y+oy;ctx.fillStyle="rgba(8,14,18,.25)";ctx.beginPath();ctx.arc(px+8,py+10,20,0,TAU);ctx.fill();
+      ctx.fillStyle="#3f7355";for(let i=0;i<7;i++){const a=i*TAU/7+px;poly([[px,py],[px+Math.cos(a-.22)*26,py+Math.sin(a-.22)*26],[px+Math.cos(a+.22)*26,py+Math.sin(a+.22)*26]]);ctx.fill()}
+      ctx.fillStyle="#6b4f37";ctx.beginPath();ctx.arc(px,py,4,0,TAU);ctx.fill()}
+    ctx.fillStyle="#6b4f37";ctx.fillRect(BARREL.x-8,BARREL.y-8,16,16);ctx.fillStyle=mix("#2a2623","#5fb0c0",isl.water);ctx.fillRect(BARREL.x-5,BARREL.y-5,10,10);
+    ctx.strokeStyle="#5a4030";ctx.lineWidth=4;ctx.beginPath();for(let i=0;i<4;i++){const a=i*.8;ctx.moveTo(WOOD.x-Math.cos(a)*14,WOOD.y-Math.sin(a)*14);ctx.lineTo(WOOD.x+Math.cos(a)*14,WOOD.y+Math.sin(a)*14)}ctx.stroke();
+    if(isl.fire>0){for(let i=0;i<4;i++){const a=time*7+i*1.7,fr=13*(.6+.3*Math.sin(a));ctx.fillStyle=i%2?"#e2a94b":"#d5562f";poly([[WOOD.x-fr*.6+i*4-6,WOOD.y+5],[WOOD.x+i*4-6,WOOD.y-fr*1.6],[WOOD.x+fr*.6+i*4-6,WOOD.y+5]]);ctx.fill()}}
+    if(!isl.gone&&!(isl.ship&&isl.ship.st===2)){const c=castaway;person(c,1,"#8a7a5a","#c9a07a");
+      if(!isl.ship){const need=isl.water<1?0:(isl.fire<=0?1:2);if(need<2){const bx=c.x+14,by=c.y-22;ctx.fillStyle="rgba(231,220,194,.92)";ctx.beginPath();ctx.arc(bx,by,11,0,TAU);ctx.fill();
+          if(need===0){ctx.fillStyle="#3f8fa3";poly([[bx,by-7],[bx+5,by+2],[bx-5,by+2]]);ctx.fill();ctx.beginPath();ctx.arc(bx,by+2,5,0,TAU);ctx.fill()}
+          else{ctx.fillStyle="#d5562f";poly([[bx-5,by+6],[bx,by-8],[bx+5,by+6]]);ctx.fill();ctx.fillStyle="#e2a94b";poly([[bx-2.5,by+6],[bx,by-1],[bx+2.5,by+6]]);ctx.fill()}}}}
+    else if(isl.gone){ctx.strokeStyle="#5a4030";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(ISL.x,ISL.y);ctx.lineTo(ISL.x,ISL.y-26);ctx.stroke();ctx.fillStyle="#b5583f";poly([[ISL.x,ISL.y-26],[ISL.x+18,ISL.y-20],[ISL.x,ISL.y-14]]);ctx.fill()}}
+  // barcos
+  for(const b of boats)if(vis(b.x,b.y,60))boat(b,1);for(const b of moored)if(vis(b.x,b.y,60))boat(b,0);
+  if(isl.ship){const s=isl.ship;ctx.save();ctx.translate(s.x,s.y);if(s.st===2)ctx.scale(-1,1);ctx.fillStyle="#3d3532";poly([[-60,0],[-44,-16],[44,-16],[56,0],[44,16],[-44,16]]);ctx.fill();
+    ctx.fillStyle="#d8d2c2";ctx.fillRect(-10,-10,34,20);ctx.fillStyle="#b5583f";ctx.fillRect(-2,-5,10,10);ctx.restore()}
+  // edificios
+  const dayLit=dark<.15;
+  for(const b of blds)if(vis(b.x,b.y,200)){ctx.fillStyle="rgba(8,14,18,.35)";ctx.fillRect(b.x-b.w/2+b.tall*.7,b.y-b.h/2+b.tall,b.w,b.h);
+    ctx.fillStyle=b.c;ctx.fillRect(b.x-b.w/2,b.y-b.h/2,b.w,b.h);ctx.fillStyle="rgba(255,255,255,.08)";ctx.fillRect(b.x-b.w/2+6,b.y-b.h/2+6,b.w-12,b.h-12);
+    if(b.hosp){ctx.fillStyle="#c0392f";ctx.fillRect(b.x-5,b.y-17,10,34);ctx.fillRect(b.x-17,b.y-5,34,10)}
+    if(b.school){ctx.fillStyle="rgba(0,0,0,.2)";ctx.fillRect(b.x-b.w/2,b.y,b.w,b.h/2);ctx.fillStyle="#e7dcc2";ctx.fillRect(b.x-b.w/2,b.y-2,b.w,4)}
+    if(b.awn){const ay=b.y+b.h/2;for(let i=0;i<8;i++){ctx.fillStyle=i%2?"#ece6d8":b.awn;ctx.fillRect(b.x-b.w/2+i*b.w/8,ay,b.w/8+.5,13)}}
+    if(b.fac){ctx.fillStyle="#3d3532";ctx.beginPath();ctx.arc(CHIM.x,CHIM.y,17,0,TAU);ctx.fill();ctx.fillStyle="#14100f";ctx.beginPath();ctx.arc(CHIM.x,CHIM.y,10,0,TAU);ctx.fill()}
+    if(b.pw){ctx.fillStyle="#c9a441";ctx.fillRect(b.x-3,b.y-b.h/2+6,6,6);ctx.fillRect(b.x-3,b.y+b.h/2-12,6,6)}
+    if(b.lit&&dayLit&&!b.hosp){ctx.fillStyle="#e2a94b";ctx.fillRect(b.x-b.w/2+10,b.y+b.h/2-12,4,4)}}
+  for(const h of houses)if(vis(h.x,h.y,140)){ctx.save();ctx.translate(h.x,h.y);ctx.rotate(h.rot);
+    ctx.fillStyle="rgba(8,14,18,.3)";ctx.fillRect(-h.w/2+6,-h.h/2+8,h.w,h.h);
+    ctx.fillStyle=h.c;ctx.fillRect(-h.w/2,-h.h/2,h.w,h.h);ctx.fillStyle="rgba(0,0,0,.22)";ctx.fillRect(-h.w/2,0,h.w,h.h/2);
+    ctx.fillStyle="rgba(255,240,210,.25)";ctx.fillRect(-h.w/2,-1.5,h.w,3);ctx.restore()}
+  if(vis(CHURCH.x,CHURCH.y,120)){const X=CHURCH.x,Y=CHURCH.y;ctx.fillStyle="rgba(8,14,18,.3)";ctx.fillRect(X-28,Y-10,90,46);
+    ctx.fillStyle="#8f8672";ctx.fillRect(X-34,Y-20,90,44);ctx.fillStyle="#6f6857";ctx.fillRect(X-34,Y+2,90,22);
+    ctx.fillStyle="#b7ad94";ctx.fillRect(X-22,Y-22,44,44);ctx.fillStyle="#7a735f";poly([[X-22,Y+22],[X,Y],[X+22,Y+22]]);ctx.fill();poly([[X+22,Y-22],[X,Y],[X+22,Y+22]]);ctx.fill();
+    ctx.fillStyle="#e2a94b";ctx.beginPath();ctx.arc(X,Y,3.5,0,TAU);ctx.fill()}
+  if(vis(LIGHT.x,LIGHT.y,60)){ctx.fillStyle="#d8cfb8";ctx.beginPath();ctx.arc(LIGHT.x,LIGHT.y,16,0,TAU);ctx.fill();ctx.fillStyle="#b5583f";ctx.beginPath();ctx.arc(LIGHT.x,LIGHT.y,10,0,TAU);ctx.fill();ctx.fillStyle="#f3d48e";ctx.beginPath();ctx.arc(LIGHT.x,LIGHT.y,5,0,TAU);ctx.fill()}
+  if(save.karma<=-15)for(const c of CANNONS)if(vis(c.x,c.y,60)){const a=Math.atan2(P.y-c.y,P.x-c.x);ctx.fillStyle="rgba(8,14,18,.3)";ctx.beginPath();ctx.arc(c.x+5,c.y+7,17,0,TAU);ctx.fill();
+    ctx.fillStyle="#3d3532";ctx.beginPath();ctx.arc(c.x,c.y,17,0,TAU);ctx.fill();ctx.strokeStyle="#6f6857";ctx.lineWidth=9;ctx.beginPath();ctx.moveTo(c.x,c.y);ctx.lineTo(c.x+Math.cos(a)*28,c.y+Math.sin(a)*28);ctx.stroke()}
+  // coches
+  for(const c of cars){const x=c.hor?CITY.x+c.p*CITY.w:CITY.x+c.l*CELL+(c.v>0?6:-6),y=c.hor?CITY.y+c.l*CELL+(c.v>0?6:-6):CITY.y+c.p*CITY.h;c.x=x;c.y=y;
+    if(vis(x,y,30)){ctx.fillStyle=c.c;if(c.hor)ctx.fillRect(x-9,y-4.5,18,9);else ctx.fillRect(x-4.5,y-9,9,18);ctx.fillStyle="rgba(20,30,36,.6)";if(c.hor)ctx.fillRect(x-3,y-3.5,7,7);else ctx.fillRect(x-3.5,y-3,7,7)}}
+  // animales y gente
+  for(const c of cows)if(!c.fly&&vis(c.x,c.y,40))drawCow(c,1);
+  for(const s of sheep)if(vis(s.x,s.y,30)){ctx.fillStyle=s.wet>0?"#bdb7a8":"#e9e3d4";ctx.beginPath();ctx.arc(s.x-4,s.y,6,0,TAU);ctx.arc(s.x+3,s.y-2,6,0,TAU);ctx.arc(s.x+2,s.y+3,5.5,0,TAU);ctx.fill();
+    ctx.fillStyle="#2a2623";ctx.beginPath();ctx.arc(s.x+Math.cos(s.ang)*9,s.y+Math.sin(s.ang)*9,3.4,0,TAU);ctx.fill()}
+  for(const q of deer)if(vis(q.x,q.y,30)){ctx.save();ctx.translate(q.x,q.y);ctx.rotate(q.ang);ctx.fillStyle="#8a623f";ctx.beginPath();ctx.ellipse(0,0,11,5.5,0,0,TAU);ctx.fill();
+    ctx.fillStyle="#d9c7a3";ctx.beginPath();ctx.arc(-9,0,3,0,TAU);ctx.fill();ctx.fillStyle="#6f4d31";ctx.beginPath();ctx.arc(12,0,4,0,TAU);ctx.fill();ctx.restore()}
+  for(const q of ducks)if(vis(q.x,q.y,20)){ctx.strokeStyle="rgba(150,200,205,.35)";ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(q.x,q.y,8+2*Math.sin(time*2+q.ph),0,TAU);ctx.stroke();
+    ctx.fillStyle="#d8d2c2";ctx.beginPath();ctx.ellipse(q.x,q.y,5,3.4,q.ang,0,TAU);ctx.fill();ctx.fillStyle="#3f6f55";ctx.beginPath();ctx.arc(q.x+Math.cos(q.ang)*5,q.y+Math.sin(q.ang)*5,2.3,0,TAU);ctx.fill()}
+  for(const g of dogs)if(vis(g.x,g.y,30)){ctx.save();ctx.translate(g.x,g.y);ctx.rotate(g.ang+(g.wet>0?Math.sin(time*30)*.35:0));
+    ctx.fillStyle=g.wet>0?"#5a4030":"#8a6242";ctx.beginPath();ctx.ellipse(0,0,9,5,0,0,TAU);ctx.fill();ctx.beginPath();ctx.arc(8,0,4.5,0,TAU);ctx.fill();
+    ctx.strokeStyle=ctx.fillStyle;ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(-8,0);ctx.lineTo(-14,Math.sin(time*10+g.ph)*4);ctx.stroke();ctx.restore()}
+  const pa=1-clamp((dark-.4)/.3,0,1);
+  if(pa>0){ctx.globalAlpha=pa;for(const p of people)if(vis(p.x,p.y,30))person(p,pa,"#2d3a40","#d9b48c");
+    const ka=1-clamp(dark/.3,0,1);ctx.globalAlpha=ka;if(ka>0)for(const q of kids)if(vis(q.x,q.y,30)){ctx.fillStyle=q.wet>0?"#5fb0c0":q.uc;ctx.beginPath();ctx.arc(q.x,q.y,4,0,TAU);ctx.fill();ctx.fillStyle="#d9b48c";ctx.beginPath();ctx.arc(q.x,q.y,2.3,0,TAU);ctx.fill()}
+    ctx.globalAlpha=1}
+  if(vis(farmer.x,farmer.y,40)){ctx.fillStyle="#3f5f78";ctx.beginPath();ctx.ellipse(farmer.x,farmer.y,7,5,farmer.ang+Math.PI/2,0,TAU);ctx.fill();ctx.fillStyle="#d9b24a";ctx.beginPath();ctx.arc(farmer.x,farmer.y,6,0,TAU);ctx.fill();ctx.fillStyle="#b8923a";ctx.beginPath();ctx.arc(farmer.x,farmer.y,3,0,TAU);ctx.fill()}
+  if(crows.st==="eat"){ctx.fillStyle="#14181a";for(let i=0;i<7;i++){const hx=crows.x+Math.sin(i*2.4)*46+Math.sin(time*3+i)*3,hy=crows.y+Math.cos(i*1.7)*36+Math.abs(Math.sin(time*6+i))*-3;ctx.beginPath();ctx.ellipse(hx,hy,5,3.2,i,0,TAU);ctx.fill()}}
+  // árboles
+  for(const t of trees)if(vis(t.x,t.y,50)){
+    if(t.st===2){ctx.fillStyle="#1d2224";hex(t.x,t.y,t.r0*.55,t.rot);ctx.fill();ctx.fillStyle="#34322e";hex(t.x,t.y,t.r0*.25,t.rot);ctx.fill();continue}
+    ctx.fillStyle="rgba(8,14,18,.28)";hex(t.x+7,t.y+9,t.r,t.rot);ctx.fill();
+    const tc=TREEC[season][((t.rot*7)|0)%TREEC[season].length];
+    ctx.fillStyle=tc[0];hex(t.x,t.y,t.r,t.rot);ctx.fill();ctx.fillStyle=tc[1];hex(t.x-t.r*.15,t.y-t.r*.15,t.r*.62,t.rot+.5);ctx.fill();
+    ctx.fillStyle=tc[2];hex(t.x-t.r*.25,t.y-t.r*.25,t.r*.28,t.rot);ctx.fill();
+    if(t.st===1){for(let i=0;i<3;i++){const a=time*7+i*1.7+t.rot,fr=t.r*(.5+.3*Math.sin(a));ctx.fillStyle=i%2?"#e2a94b":"#d5562f";ctx.globalAlpha=.88;
+      poly([[t.x-fr*.6+i*5-5,t.y+4],[t.x+i*5-5+Math.sin(a)*4,t.y-fr*1.5],[t.x+fr*.6+i*5-5,t.y+4]]);ctx.fill()}ctx.globalAlpha=1}}
+  // objetivo
+  if(dist(P.x,P.y,P.tx,P.ty)>24){ctx.strokeStyle="rgba(231,220,194,.55)";ctx.lineWidth=2;ctx.beginPath();ctx.arc(P.tx,P.ty,9+2*Math.sin(time*4),0,TAU);ctx.stroke()}
+  // sombras de nubes
+  ctx.fillStyle="rgba(6,12,16,.22)";
+  for(const c of clouds)if(vis(c.x,c.y+70,180)){const sc=Math.min(1,c.age/3);puffPath(c.x,c.y+70,c.r*sc,c.pf,.8);ctx.fill()}
+  for(const c of rivals)if(vis(c.x,c.y,320)){puffPath(c.x,c.y,c.r,c.pf,.85);ctx.fill()}
+  const Rd=rad(),A=alt();
+  ctx.fillStyle=P.rain?"rgba(6,12,16,.42)":"rgba(6,12,16,.3)";puffPath(P.x,P.y,Rd,P.pf,.85);ctx.fill();
+  if(rainbow){const al=Math.min(1,rainbow.t/3)*.55,cols=["#c9634f","#d99a4a","#d9cc6a","#6fae7a","#5f9fc0","#8b74b5"];ctx.lineWidth=7;
+    cols.forEach((c,i)=>{ctx.strokeStyle=c;ctx.globalAlpha=al;ctx.beginPath();ctx.arc(rainbow.x,rainbow.y+40,190-i*7,Math.PI,TAU);ctx.stroke()});ctx.globalAlpha=1}
+  // lluvia inclinada por el viento / nieve
+  const sl=clamp(WGX*.08,-14,14);
+  ctx.lineWidth=1.6;ctx.strokeStyle="rgba(170,215,225,.75)";ctx.beginPath();
+  for(const d of drops){if(d.snow)continue;if(d.h>0){ctx.moveTo(d.x-sl*d.h/60,d.y-d.h);ctx.lineTo(d.x-sl*(d.h-13)/60,d.y-d.h+13)}else{const r=2+d.s*26;ctx.moveTo(d.x+r,d.y);ctx.ellipse(d.x,d.y,r,r*.55,0,0,TAU)}}
+  ctx.stroke();ctx.fillStyle="#f0f2ee";
+  for(const d of drops)if(d.snow){ctx.globalAlpha=d.h>0?1:1-d.s/1.2;ctx.beginPath();ctx.arc(d.x+Math.sin(d.h*.05+d.x)*5,d.y-Math.max(0,d.h),2.2,0,TAU);ctx.fill()}
+  ctx.globalAlpha=1;
+  if(tornado){const T=tornado,kk=Math.min(1,T.t/2,(T.t0-T.t)/1.5);ctx.lineWidth=5;
+    for(let i=0;i<10;i++){const rx=(9+i*7)*kk,x=T.x+Math.sin(time*7+i*.7)*i*2.2,y=T.y-i*(A/10);ctx.strokeStyle="rgba("+(70+i*9)+","+(78+i*9)+","+(86+i*9)+",.8)";
+      ctx.beginPath();ctx.ellipse(x,y,rx,rx*.42,0,time*9+i,time*9+i+5);ctx.stroke()}
+    ctx.fillStyle="#6b5a45";for(let i=0;i<8;i++){const a=time*6+i*.8,r=30+i*6;ctx.fillRect(T.x+Math.cos(a)*r,T.y-i*9+Math.sin(a)*r*.4,4,4)}}
+  for(const c of cows)if(c.fly&&vis(c.x,c.y,120))drawCow(c,1+Math.sin(Math.min(1,c.fly.t/4.5)*Math.PI)*1.6);
+  for(const s of smoke)if(vis(s.x,s.y,80)){ctx.globalAlpha=.5*(1-s.t/7);ctx.fillStyle="#8a8680";ctx.beginPath();ctx.arc(s.x,s.y,s.r+s.t*7,0,TAU);ctx.fill()}ctx.globalAlpha=1;
+  // pájaros
+  ctx.lineWidth=2;ctx.lineJoin="round";
+  for(const f of flocks)if(vis(f.x,f.y,300)){const c=Math.cos(f.h),s=Math.sin(f.h),sp=1+f.sc*.8;
+    for(let i=0;i<f.n;i++){const rk=Math.ceil(i/2),sd=i%2?1:-1,lx=-rk*17*sp+(f.sc>0?Math.sin(i*5+time*3)*14:0),ly=sd*rk*13*sp;bird(f.x+lx*c-ly*s,f.y+lx*s+ly*c,f.h,f.ph+i,"#1b2226",1)}}
+  for(const g of gulls){const x=g.cx+Math.cos(g.a)*g.r,y=g.cy+Math.sin(g.a)*g.r*.8;if(vis(x,y,40))bird(x,y,g.a+(g.w>0?1:-1)*Math.PI/2,g.ph,"#ece8dc",1.15)}
+  if(crows.st==="in"||crows.st==="out")for(let i=0;i<7;i++)bird(crows.x+Math.sin(i*2.4)*40,crows.y+Math.cos(i*1.7)*30,crows.ang||0,i,"#0f1315",1.1);
+  for(const b of bursts)bird(b.x,b.y,b.h,b.ph,"#1b2226",.9);
+  // niebla de la isla
+  if(fogA>0&&vis(ISL.x,ISL.y,700)){ctx.globalAlpha=.94*fogA;ctx.fillStyle="#9aa6a8";ctx.beginPath();
+    for(let i=0;i<14;i++){const a=i*2.4,r=i<3?40:rr2(i)*300,px=ISL.x+Math.cos(a)*r+Math.sin(time*.2+i)*14,py=ISL.y+Math.sin(a)*r*.8,pr=170+((i*37)%70);ctx.moveTo(px+pr,py);ctx.arc(px,py,pr,0,TAU)}
+    ctx.fill();ctx.globalAlpha=1}
+  // nubes
+  for(const c of clouds)if(vis(c.x,c.y,200)){const sc=Math.min(1,c.age/3),fo=c.fixed?1:clamp((c.life+4-c.age)/4,0,1);ctx.globalAlpha=.9*sc*fo;drawCloud(c.x,c.y,c.r*(.4+.6*sc),c.pf,0)}
+  // nubes rivales: oscuras, con ojos; el número dice si son más grandes que tú
+  for(const c of rivals)if(vis(c.x,c.y,360)){const cy=c.y-c.r*.75-50,big=c.m>P.m;ctx.globalAlpha=.94;drawCloud(c.x,cy,c.r,c.pf,.97);
+    ctx.globalCompositeOperation="lighter";ctx.globalAlpha=.25+.2*Math.sin(time*5+c.ph);glow(GR,c.x,cy,c.r*1.15);
+    ctx.globalAlpha=c.stun>0?.3:.95;const ex=c.r*.22,ey=cy-c.r*.05,er=c.r*.16;glow(big?GE:GA,c.x-ex,ey,er);glow(big?GE:GA,c.x+ex,ey,er);ctx.globalCompositeOperation="source-over";ctx.globalAlpha=1;
+    ctx.font="700 "+Math.round(18/zoom*.8+8)+"px 'Alegreya Sans',sans-serif";ctx.textAlign="center";ctx.fillStyle=big?"#ff8a6a":"#a9e0a0";ctx.fillText((big?"▲ ":"▼ ")+c.m,c.x,cy-c.r*.75)}
+  if(seedPlane&&vis(seedPlane.x,seedPlane.y,200)){const s=seedPlane;ctx.save();ctx.translate(s.x+40,s.y+90);ctx.rotate(s.a);ctx.scale(.6,.6);ctx.fillStyle="rgba(6,12,16,.25)";planeShape();ctx.restore();
+    ctx.save();ctx.translate(s.x,s.y);ctx.rotate(s.a);ctx.scale(.6,.6);ctx.fillStyle=s.flee?"#8a8680":"#c0392f";planeShape();ctx.fillStyle="#ece6d8";ctx.fillRect(-10,-34,6,68);ctx.restore()}
+  ctx.globalAlpha=.9;const dk=clamp(P.w/cap()*.45+(stormy()?.4:0)+(P.rain?.1:0),0,1);
+  const pp=FEEL.pop,pf2=pp>0?pp*Math.cos((1-pp)*7):0; // rebote: se estira, se aplasta y vuelve exactamente a 1
+  ctx.save();ctx.translate(P.x,P.y-A);ctx.scale(1+.26*pf2,1-.2*pf2);if(P.dash>0)ctx.scale(1.15,.9);drawForm(save.form,Rd,P.pf,dk);ctx.restore();
+  if(FEEL.glow>0){ctx.globalCompositeOperation="lighter";ctx.globalAlpha=FEEL.glow*(cfg.calm?.3:.75);glow(GW,P.x,P.y-A,Rd*1.25);ctx.globalCompositeOperation="source-over"}
+  ctx.globalAlpha=1;
+  if(plane&&vis(plane.x,plane.y,200)){ctx.save();ctx.translate(plane.x+50,plane.y+110);ctx.rotate(plane.a);ctx.fillStyle="rgba(6,12,16,.25)";planeShape();ctx.restore();
+    ctx.save();ctx.translate(plane.x,plane.y);ctx.rotate(plane.a);ctx.fillStyle="#d8d2c2";planeShape();ctx.fillStyle="#b5583f";ctx.fillRect(-26,-3,8,6);ctx.restore()}
+  // noche: velo azul y luces
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  if(SEA.tint[season]){ctx.fillStyle="rgba("+SEA.tint[season]+")";ctx.fillRect(0,0,vw,vh)}
+  if(warm>0){ctx.fillStyle="rgba(255,130,60,"+warm*.13+")";ctx.fillRect(0,0,vw,vh)}
+  if(dark>0){ctx.fillStyle="rgba(7,12,34,"+dark*.64+")";ctx.fillRect(0,0,vw,vh)}
+  ctx.setTransform(k,0,0,k,-x0*k,-y0*k);
+  ctx.globalCompositeOperation="lighter";
+  for(const t of trees)if(t.st===1&&vis(t.x,t.y,80)){ctx.globalAlpha=.25+.45*dark;glow(GF,t.x,t.y,60)}
+  if(isl.fire>0){ctx.globalAlpha=.4+.5*dark;glow(GF,WOOD.x,WOOD.y,90)}
+  if(camp.fire&&vis(CAMP.x,CAMP.y,150)){ctx.globalAlpha=.25+.6*dark;glow(GF,CAMP.x,CAMP.y,80+6*Math.sin(time*9))}
+  if(dark>.05){
+    const on=cityOff<=0;ctx.globalAlpha=dark*.9;
+    if(on){for(const b of blds)if(b.lit&&vis(b.x,b.y,90)){glow(GA,b.x-b.w/4,b.y+b.h/4,26);if(b.w>70)glow(GA,b.x+b.w/4,b.y-b.h/4,22)}
+      ctx.globalAlpha=dark*.55;for(let i=0;i<=14;i++)for(let j=0;j<=9;j++){const lx=CITY.x+i*CELL,ly=CITY.y+j*CELL;if((i===6&&j===4)||(i===12&&j===5))continue;if(vis(lx,ly,60))glow(GA,lx,ly,46)}}
+    ctx.globalAlpha=dark*.8;for(const h of houses)if(vis(h.x,h.y,60))glow(GA,h.x,h.y,34);
+    if(vis(CHURCH.x,CHURCH.y,80))glow(GA,CHURCH.x,CHURCH.y,50);
+    ctx.globalAlpha=dark;for(const c of cars)if(vis(c.x,c.y,50)){const s=c.v>0?1:-1;glow(GW,c.x+(c.hor?s*16:0),c.y+(c.hor?0:s*16),20)}
+    for(const f of flies)if(vis(f.x,f.y,10)){const a=Math.sin(time*1.7+f.ph);if(a>0){ctx.globalAlpha=dark*a;glow(GA,f.x+Math.sin(time*.6+f.ph)*12,f.y+Math.cos(time*.5+f.ph)*12,7)}}}
+  if(vis(LIGHT.x,LIGHT.y,620)){const a=time*.5,L=560;ctx.globalAlpha=.25+.6*dark;const gr=ctx.createRadialGradient(LIGHT.x,LIGHT.y,10,LIGHT.x,LIGHT.y,L);gr.addColorStop(0,"rgba(240,200,120,.5)");gr.addColorStop(1,"rgba(240,200,120,0)");
+    ctx.fillStyle=gr;ctx.beginPath();ctx.moveTo(LIGHT.x,LIGHT.y);ctx.arc(LIGHT.x,LIGHT.y,L,a,a+.32);ctx.closePath();ctx.fill()}
+  for(const m of motes)if(vis(m.x,m.y,20)){ctx.globalAlpha=.6*Math.min(1,m.t/4);glow(GW,m.x,m.y+Math.sin(time*2+m.ph)*5,10)}
+  ctx.globalAlpha=1;for(const s of shots){glow(GE,s.x,s.y,22);glow(GA,s.x,s.y,10)}
+  for(const s of sparks){ctx.globalAlpha=Math.min(1,s.t*3);glow(GA,s.x,s.y,8)}
+  ctx.globalCompositeOperation="source-over";ctx.globalAlpha=1;
+  // viento visible
+  const wa=clamp(WSP/70,.15,1);ctx.strokeStyle="rgba(235,240,235,1)";ctx.lineWidth=1.5;
+  for(const s of streaks){const [sx,sy]=windAt(s.x,s.y);ctx.globalAlpha=Math.sin(clamp(s.l/1.6,0,1)*Math.PI)*.3*wa;ctx.beginPath();ctx.moveTo(s.x,s.y);ctx.lineTo(s.x-sx*.3,s.y-sy*.3);ctx.stroke()}
+  ctx.globalAlpha=1;
+  // rayos
+  for(const b of bolts){ctx.globalAlpha=Math.min(1,b.t*4);ctx.strokeStyle="#fff4c9";ctx.lineWidth=5;ctx.lineJoin="miter";ctx.beginPath();b.pts.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.stroke();
+    ctx.fillStyle="rgba(255,240,180,.6)";ctx.beginPath();ctx.arc(b.x,b.y,26*b.t/.4,0,TAU);ctx.fill()}ctx.globalAlpha=1;
+  ctx.textAlign="center";
+  for(const f of floats){ctx.globalAlpha=Math.min(1,f.t);if(f.vap){ctx.fillStyle="#9fd0d8";ctx.beginPath();ctx.arc(f.x,f.y-(1.2-f.t)*A,3,0,TAU);ctx.fill()}
+    else{ctx.font="700 "+Math.round(15/zoom)+"px 'Alegreya Sans',sans-serif";ctx.fillStyle=f.bad?"#ff8a6a":f.xp?"#9fd0d8":"#e2a94b";ctx.fillText(f.txt,f.x,f.y)}}
+  ctx.globalAlpha=1;
+  if(flash>0){ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle="rgba(255,248,220,"+flash*(cfg.calm?.1:.5)+")";ctx.fillRect(0,0,vw,vh)}
+  drawMini();
+}
+const rr2=i=>.45+((i*53)%50)/100;
+function drawCow(c,sc){ctx.save();ctx.translate(c.x,c.y);ctx.rotate(c.fly?c.fly.a:c.ang);ctx.scale(sc,sc);
+  if(sc>1.05){ctx.fillStyle="rgba(6,12,16,.2)";ctx.beginPath();ctx.ellipse(10*sc,14*sc,13,8,0,0,TAU);ctx.fill()}
+  ctx.fillStyle=c.wet>0?"#cfc9bb":"#ece5d6";ctx.beginPath();ctx.ellipse(0,0,14,8.5,0,0,TAU);ctx.fill();
+  ctx.fillStyle="#2a2623";ctx.beginPath();ctx.ellipse(-4,-2,5*c.sp0+2,4,0,0,TAU);ctx.fill();ctx.beginPath();ctx.ellipse(6,3,3.5,3,0,0,TAU);ctx.fill();
+  ctx.fillStyle="#ece5d6";ctx.beginPath();ctx.ellipse(15,0,5,4.5,0,0,TAU);ctx.fill();ctx.fillStyle="#d9a59a";ctx.beginPath();ctx.arc(19,0,2.2,0,TAU);ctx.fill();ctx.restore()}
+function planeShape(){poly([[34,0],[22,-5],[4,-5],[-8,-34],[-16,-34],[-8,-5],[-24,-5],[-30,-14],[-35,-14],[-32,0],[-35,14],[-30,14],[-24,5],[-8,5],[-16,34],[-8,34],[4,5],[22,5]]);ctx.fill()}
+const mini=$("mini"),mc=mini.getContext("2d"),miniBg=document.createElement("canvas");miniBg.width=248;miniBg.height=182;
+(function(){const g=miniBg.getContext("2d");g.scale(248/W,182/H);paint(g,ALL,true)})();
+function drawMini(){mc.drawImage(miniBg,0,0);const kx=248/W,ky=182/H;mc.fillStyle="rgba(236,230,216,.7)";
+  for(const c of clouds)mc.fillRect(c.x*kx-1.5,c.y*ky-1.5,3,3);
+  if(save.found){mc.fillStyle="#c0ab7e";mc.beginPath();mc.arc(ISL.x*kx,ISL.y*ky,4,0,TAU);mc.fill()}
+  for(const c of rivals){mc.fillStyle=c.m>P.m?"#ff5a3a":"#a9e0a0";mc.fillRect(c.x*kx-2.5,c.y*ky-2.5,5,5)}
+  mc.fillStyle="#d5562f";let nb=0;for(const t of trees)if(t.st===1&&nb++<120)mc.fillRect(t.x*kx-1,t.y*ky-1,2.5,2.5);
+  if(dark>0){mc.fillStyle="rgba(7,12,34,"+dark*.45+")";mc.fillRect(0,0,248,182)}
+  mc.strokeStyle="rgba(231,220,194,.5)";mc.lineWidth=1.5;mc.strokeRect(X0*kx,Y0*ky,VW*kx,VH*ky);
+  mc.fillStyle="#e2a94b";mc.beginPath();mc.arc(P.x*kx,P.y*ky,5,0,TAU);mc.fill();mc.strokeStyle="#0d181c";mc.lineWidth=2;mc.stroke()}
+
+/* ---------- Bucle ---------- */
+refreshAch();refreshForms();refreshPts();refreshMis();sky();
+let last=performance.now();
+function frame(now){const dt=clamp((now-last)/1000,0,.05);last=now;feelFrame(dt);audioFrame(dt);if(!paused)update(dt*(now<FEEL.hsEnd?.05:1));toastPump();draw(dt);requestAnimationFrame(frame)}
+requestAnimationFrame(frame);
+window.addEventListener("pagehide",()=>{if(started)persist()});
+window.__nube={get mis(){return save.mis},curCap,MIS,ACH,joy,openLv,get pend(){return pendLv},fields,LAKE,coastY,zoneAt,get zoom(){return zoom},gain,karma,learn,dash,evaporate,get rivals(){return rivals},get seedPlane(){return seedPlane},get motes(){return motes},get season(){return season},newDay,world2,UPS,FEEL,AU,cfg,feedback,feelFrame,strike,P,update,unlock,get save(){return save},clouds,cows,trees,fields,crows,isl,farmer,ISL,WOOD,PARK,STAD,YARD,POWER,CAMP,SHEEP,
+  setDay(t){tday=t;sky()},gale(){galeT=0},info:()=>({dark,WSP,gale,n:clouds.length,burning:trees.filter(t=>t.st===1).length,burnt:trees.filter(t=>t.st===2).length})};
+})();
+</script>
+<script>
+if("serviceWorker" in navigator&&location.protocol==="https:")navigator.serviceWorker.register("sw.js").catch(()=>{});
+</script>
+</body>
+</html>
