@@ -1,0 +1,14 @@
+Copyright (c) 2026 jjgarcia-seo. Todos los derechos reservados.
+
+Vida de Nube (el código, los textos, los gráficos, el diseño del juego y su nombre) es obra
+protegida por derechos de autor.
+
+Puedes ver este repositorio y jugar al juego en su web oficial. No está permitido copiar,
+modificar, redistribuir, publicar en otro sitio ni usar con fines comerciales este juego o
+cualquier parte de él sin permiso previo y por escrito del autor.
+
+Las propuestas de cambios (issues y pull requests) son bienvenidas. Al enviarlas aceptas que el
+autor pueda incorporarlas al juego bajo estas mismas condiciones.
+
+Excepción: las guías de la carpeta .claude/skills/ son de terceros y mantienen su propia
+licencia (Apache 2.0, ver .claude/skills/LICENSE y .claude/skills/NOTICE).

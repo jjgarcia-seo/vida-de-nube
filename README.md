@@ -55,6 +55,12 @@ La partida se guarda en el navegador de cada jugador (`localStorage`).
 - Modo barrio: generar el mapa con datos reales de OpenStreetMap (parques, colegios, calles).
 - Noche de otoño más clara y cámara algo más cerca en móvil.
 
+## Derechos de autor
+
+© 2026 jjgarcia-seo. Todos los derechos reservados. Puedes jugar y proponer cambios, pero no
+copiar, modificar ni publicar el juego en otro sitio sin permiso. Condiciones completas en
+[`LICENSE`](LICENSE).
+
 ## Créditos
 
 Las guías de `.claude/skills/` vienen de
