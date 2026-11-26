@@ -235,6 +235,22 @@ h1{font-family:var(--display);font-weight:800;font-size:clamp(34px,7vw,52px);lin
   #histTxt{font-size:15px}
 }
 @media (prefers-reduced-motion:reduce){#histCard{animation:none}}
+/* Habilidades y jefes */
+#mecBtns{display:contents}
+@media (max-width:900px){#mecBtns{position:absolute;right:0;bottom:calc(100% + 6px);display:flex;flex-direction:column;align-items:stretch;gap:6px}}
+#bossBar{position:absolute;top:64px;left:50%;transform:translateX(-50%);width:min(440px,42vw);pointer-events:none;padding:6px 12px 7px;border-color:var(--rust)}
+.overlay:not([hidden])~#bossBar{visibility:hidden} /* que no asome por encima de Mejoras o del Nubario */
+#bossHead{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+#bossName{font-family:var(--display);font-weight:800;font-size:19px;color:var(--paper)}
+#bossTitle{font-size:11px;color:var(--paper-dim);letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#bossHp{height:10px;background:var(--ink);border:1px solid var(--line);margin:5px 0 4px;position:relative}
+#bossHp::before,#bossHp::after{content:"";position:absolute;top:-3px;bottom:-3px;width:1px;background:var(--paper-dim);opacity:.6;z-index:1}
+#bossHp::before{left:66%}#bossHp::after{left:30%}
+#bossHpF{position:absolute;inset:0 auto 0 0;width:100%;background:var(--rust);transition:width .25s}
+#bossBar.shield #bossHpF{background:var(--water)}
+#bossBar.weak #bossHpF{background:var(--amber)}
+#bossPh{display:block;font-size:12px;color:var(--paper-dim);line-height:1.25}
+@media (max-width:560px){#bossBar{top:auto;bottom:236px;width:min(300px,72vw);padding:5px 10px 6px}#bossName{font-size:16px}#bossTitle{font-size:10px}}
 </style>
 </head>
 <body>
@@ -267,6 +283,11 @@ h1{font-family:var(--display);font-weight:800;font-size:clamp(34px,7vw,52px);lin
   <div class="hud" id="br">
     <button class="act" id="btnTor" type="button" hidden>Tornado<small id="torSub">tamaño 12</small></button>
     <button class="act" id="btnRay" type="button" hidden>Rayo<small id="raySub">tamaño 6</small></button>
+    <div id="mecBtns">
+    <button class="act" id="btnHail" type="button" hidden>Granizo<small id="hailSub">tecla R</small></button>
+    <button class="act" id="btnFog" type="button" hidden>Niebla<small id="fogSub">tecla F</small></button>
+    <button class="act" id="btnSnow" type="button" hidden>Nevada<small id="snowSub">tecla G</small></button>
+    </div>
     <button class="act" id="btnDash" type="button" hidden>Ráfaga<small id="dashSub">mayús</small></button>
     <button class="act" id="btnRain" type="button">Llover<small id="rainSub">espacio</small></button>
   </div>
@@ -316,6 +337,7 @@ h1{font-family:var(--display);font-weight:800;font-size:clamp(34px,7vw,52px);lin
     </div>
   </div>
 
+  <div class="panel" id="bossBar" hidden><div id="bossHead"><b id="bossName">Jefa</b><span id="bossTitle"></span></div><div id="bossHp"><i id="bossHpF"></i></div><small id="bossPh">Fase 1</small></div>
   <div id="joy" hidden><div id="knob"></div></div>
   <div class="overlay" id="misPanel" hidden>
     <div class="card">
@@ -1347,6 +1369,311 @@ function world2(dt,z,Rd,A,C){
     if(dist(s.x,s.y,P.x,P.y-A*.5)<Rd*.55){hurt(.1,0);unlock("canon");feedback("small",s.x,s.y);shots.splice(i,1)}else if(s.t<=0)shots.splice(i,1)}
 }
 
+/* ---------- Habilidades y jefes ---------- */
+// Tres acciones nuevas (niebla densa, granizo, nevada) y una gran nube jefa por estación.
+// Lo que debe sobrevivir a la partida va en save.mec (stM); el resto vive solo mientras juegas.
+// Se engancha con mecUpdate() dentro de update() y mecDraw() dentro de draw().
+UPS.neblina={n:"Niebla densa",d:"Acción nueva: dejas tras de ti una niebla en el suelo que frena coches y gente y te esconde de rivales, avionetas y cañones. Cada nivel dura más.",max:3,min:4,act:1};
+UPS.granizo={n:"Granizo",d:"Acción nueva: una descarga corta de piedras de hielo que aplasta cultivos, espanta a todo el mundo y rompe la defensa de las rivales. Gasta mucha agua. Cada nivel la alarga y acorta la espera.",max:3,min:5,act:1};
+UPS.nevada={n:"Nevada",d:"Acción nueva: cubres de nieve una zona. Los niños salen a jugar y los coches patinan. Mucho más fuerte en invierno; en verano casi no cuaja.",max:3,min:6,act:1};
+ACH.push(
+ ["m_granizo","Piedra va","Lanza tu primera granizada."],
+ ["m_pedrisco","Pedrisco","Destroza un sembrado con granizo."],
+ ["m_sopa","Sopa de niebla","Que 10 coches se metan en tu niebla densa."],
+ ["m_rastro","Ni rastro","Escóndete en tu niebla de una rival, la avioneta o los cañones."],
+ ["m_ninos","¡Todos a la calle!","Que los niños salgan a jugar con tu nevada."],
+ ["m_derrape","Pista de patinaje","Haz patinar a 10 coches sobre tu nieve."],
+ ["jefa0","Pararrayos de abril","Vence a Centella, la Tormenta de primavera."],
+ ["jefa1","Agua en el desierto","Vence a Siroca, la Calima de verano."],
+ ["jefa2","Viento en contra","Vence a Galerna, la Borrasca de otoño."],
+ ["jefa3","Deshielo","Vence a Cierza, la Ventisca de invierno."],
+ ["jefas","Dueña de las estaciones","Vence a las cuatro jefas del año."],
+ ["m_engulle","El ojo de la tormenta","Absorbe a una jefa cuando esté débil."]
+);
+function stM(){if(!save.mec)save.mec={bs:-1,won:{},lost:0};return save.mec}
+const MEC={hcd:0,fcd:0,scd:0,hail:null,pel:[],fogT:0,fogN:0,fogs:[],snowT:0,snowP:null,snows:[],sk:[],balls:[],hid:false,hidT:-9,
+  lx:null,ly:null,frz:0,pvx:0,pvy:0,stl:0,lowT:0,sv:null,sid:-1,bwT:60,warnT:0,wave:null,gust:null,ice:null};
+let jefa=null;
+const SNOWK=[.8,.15,1,1.6]; // fuerza de la nevada por estación
+const mecHailCost=()=>cap()*(.32-.04*(up("granizo")-1)),mecFogCost=()=>cap()*.18,mecSnowCost=()=>cap()*.25;
+const mecArmor=()=>(1-.25*up("coraza"))*(fm().armor||1);
+const JEFAS=[
+ {n:"Centella",t:"la Tormenta de primavera",col:"200,170,255",ray:.7,hail:1.3,rain:0,h:"Marca el suelo antes de lanzar sus rayos: sal de los círculos."},
+ {n:"Siroca",t:"la Calima de verano",col:"255,170,80",ray:1.2,hail:1,rain:3,h:"Cerca de ella te secas y suelta golpes de calor: sal del anillo o quédate sobre agua. Tu lluvia la deshace."},
+ {n:"Galerna",t:"la Borrasca de otoño",col:"235,150,70",ray:1,hail:1.2,rain:0,h:"Sopla ráfagas en línea recta que te arrastran: apártate de la franja."},
+ {n:"Cierza",t:"la Ventisca de invierno",col:"170,225,255",ray:1.3,hail:.6,rain:0,h:"Su aliento helado te congela y te frena: sal del círculo azul."}];
+const GJEFA=JEFAS.map(b=>mkGlow(b.col)),GFOG=(()=>{const g=document.createElement("canvas");g.width=g.height=64;const x=g.getContext("2d"),gr=x.createRadialGradient(32,32,0,32,32,32);gr.addColorStop(0,"rgba(214,222,224,.6)");gr.addColorStop(.55,"rgba(214,222,224,.45)");gr.addColorStop(1,"rgba(214,222,224,0)");x.fillStyle=gr;x.fillRect(0,0,64,64);return g})(),GSNOW=mkGlow("246,249,250");
+function mkPuffs(n){const pf=[];for(let i=0;i<n;i++)pf.push({a:Math.random()*TAU,d:Math.random()*.55,s:.45+Math.random()*.3});return pf}
+function mecFloat(txt,bad,x,y){floats.push({x:x===undefined?P.x:x,y:(y===undefined?P.y-alt():y)-30,t:1.8,txt,bad:bad?1:0})}
+// sonidos
+const sRoar=()=>{noiseShot(1.6,"lowpass",320,60,.6,AU.sfx,.8);tone("sawtooth",92,44,1.4,.07,AU.sfx)};
+const sFog=()=>{noiseShot(2.4,"lowpass",520,140,.28,AU.sfx,.7);tone("sine",196,131,1.8,.05,AU.sfx,0,.4)};
+const sSnow=()=>{for(let i=0;i<6;i++)tone("sine",2093/Math.pow(1.12,i),2093/Math.pow(1.12,i),.7,.035,AU.sfx,i*.14);noiseShot(2.2,"highpass",6000,3000,.05,AU.sfx)};
+const sKids=()=>{for(let i=0;i<5;i++)tone("sine",rnd(700,1000),rnd(1100,1500),.1,.03,AU.sfx,i*.13)};
+function sHail(d){if(!AU.ctx)return;for(let i=0;i<46;i++)noiseShot(.035,"highpass",rnd(3500,6000),2500,rnd(.05,.13),AU.sfx,1,i*d/46+Math.random()*.04);
+  noiseShot(d,"bandpass",2600,1600,.12,AU.sfx,.8);noiseShot(.5,"lowpass",260,60,.35,AU.sfx)}
+
+/* acciones */
+function mecHail(){if(!started||!up("granizo")||MEC.hail||MEC.hcd>0)return;
+  if(fm().noRain)return mecFloat("demasiado alta para granizar",1);if(P.m<3)return mecFloat("necesitas tamaño 3",1);
+  const c=mecHailCost();if(P.w<c)return mecFloat("te falta agua",1);
+  P.w-=c;const l=up("granizo"),d=2.2+.5*l;MEC.hail={t:d,hit:new Set(),np:0};MEC.hcd=16-3*(l-1);
+  cnt("hail");unlock("m_granizo");feedback("medium",P.x,P.y);sHail(d)}
+function mecFog(){if(!started||!up("neblina")||MEC.fogT>0||MEC.fcd>0)return;const c=mecFogCost();if(P.w<c)return mecFloat("te falta agua",1);
+  P.w-=c;const l=up("neblina");MEC.fogT=7+3*l;MEC.fcd=MEC.fogT+10-2*l;MEC.fogN=0;FEEL.pop=.6;sFog()}
+function mecSnow(){if(!started||!up("nevada")||MEC.snowT>0||MEC.scd>0)return;if(fm().noRain)return mecFloat("demasiado alta para nevar",1);
+  const c=mecSnowCost();if(P.w<c)return mecFloat("te falta agua",1);
+  P.w-=c;const l=up("nevada"),s=Math.max(SNOWK[season],zoneAt(P.x,P.y)==="montana"?1.2:0)*(1+.25*(l-1)),R=rad()*(1.3+.7*Math.min(s,1.6));
+  MEC.snowT=3;MEC.scd=24-4*(l-1);MEC.snowP={x:P.x,y:P.y,r:R*.3,R,s,life:s<.3?7:35+25*s,kids:0,man:0,pf:mkPuffs(7)};MEC.snows.push(MEC.snowP);
+  if(MEC.snows.length>6)MEC.snows.shift();sSnow();if(s<.3)mecFloat("aguanieve: en verano se derrite al caer",1)}
+// el rayo apunta a la jefa si está cerca (envuelve a strike sin tocarla)
+const strike0=strike;
+strike=function(){const b=jefa;if(b&&!b.leave&&stormy()&&P.cool<=0&&dist(b.x,b.y,P.x,P.y)<rad()*1.6+b.r)return jefaBolt(b);strike0()};
+function jefaBolt(b){P.cool=1.2*(fm().rayCd||1);P.w-=cap()*.1*(fm().rayCost||1)*(1-.15*(up("rayo")-1))*(save.karma<=-15?.5:1);
+  const by=b.y-b.r*.75-70,sx=P.x,sy=P.y-alt(),pts=[[sx,sy]];for(let i=1;i<7;i++){const k=i/7;pts.push([lerp(sx,b.x,k)+(Math.random()-.5)*36,lerp(sy,by,k)+(Math.random()-.5)*14])}pts.push([b.x,by]);
+  bolts.push({pts,t:.4,x:b.x,y:by});const dm=Math.max(1,Math.round((4+1.5*up("rayo"))*(fm().rayDmg||1)*b.B.ray*(b.shield?.35:1)));b.hp-=dm;b.hitT=.3;
+  floats.push({x:b.x,y:by-b.r*.6,t:1.6,txt:(b.shield?"coraza −":"−")+dm,bad:b.shield?1:0});
+  flash=.4;FEEL.glow=1;feedback("medium",b.x,by);thunder(false);cnt("ray");unlock("rayo");if(dark>.8)unlock("nocturna")}
+$("btnHail").onclick=mecHail;$("btnFog").onclick=mecFog;$("btnSnow").onclick=mecSnow;
+window.addEventListener("keydown",e=>{if(!started||paused||e.repeat||e.ctrlKey||e.metaKey||e.altKey)return;const k=e.key.toLowerCase();
+  if(k==="r")mecHail();else if(k==="f")mecFog();else if(k==="g")mecSnow()});
+
+/* jefas */
+function jefaSpawn(s){const B=JEFAS[s],m=Math.max(10,Math.round(P.m*1.4)+4),a=Math.random()*TAU;
+  jefa={s,B,x:clamp(P.x+Math.cos(a)*1500,200,W-200),y:clamp(P.y+Math.sin(a)*1500,200,H-200),m,r:(52+24*Math.sqrt(m))*1.25,pf:mkPuffs(9),hp:100,ph:1,atk:5,tele:null,
+    shield:0,brk:0,breath:14,abs:0,t:0,orb:Math.random()*TAU,leave:0,far:0,hitT:0,ph0:Math.random()*6};
+  toast("Jefa",B.n+", "+B.t,B.h,sRoar);jefaUI()}
+function jefaHurt(frac,size){P.w=Math.max(0,P.w-cap()*frac*mecArmor());if(size&&P.m>1){P.m--;floats.push({x:P.x,y:P.y-alt(),t:1.8,txt:"-1 tamaño",bad:1})}}
+function jefaWin(abs){const b=jefa,M=stM(),B=b.B;M.won[b.s]=(M.won[b.s]||0)+1;M.bs=MEC.sid;
+  const ad=grow(abs?Math.ceil(b.m/2):3);P.w=cap();gain(abs?320:260,b.x,b.y);karma(5);
+  toast("Jefa vencida",B.n+(abs?" absorbida":" deshecha"),(abs?"Te la has tragado entera: ":"")+growTxt(ad)+". El valle respira tranquilo.",fanfare);
+  unlock("jefa"+b.s);if(abs)unlock("m_engulle");if([0,1,2,3].every(i=>M.won[i]))unlock("jefas");
+  feedback("large",b.x,b.y-b.r*.75-70);thunder(true);jefa=null;jefaUI();persist()}
+function jefaLose(){const b=jefa,M=stM(),m0=P.m;P.m=Math.max(1,P.m-Math.max(1,Math.round(P.m*.2)));P.w=cap()*.3;M.lost=(M.lost||0)+1;M.bs=MEC.sid;
+  toast("Aviso",b.B.n+" te ha vencido",(m0>P.m?"Pierdes "+(m0-P.m)+" de tamaño":"Te deja seca")+", pero sigues flotando. Volverá el año que viene.");
+  feedback("large",P.x,P.y);sRoar();b.leave=.01;jefaUI();persist()}
+function jefaGo(txt){const b=jefa;stM().bs=MEC.sid;b.leave=.01;toast("Tiempo",b.B.n+" "+txt,"Volverá el año que viene.");jefaUI()}
+function jefaTele(b,ph,Rd){const err=MEC.hid?280:0,ex=()=>rnd(-err,err),T={t:1.4,t0:1.4};
+  if(b.s===0){T.r=110+Rd*.3;T.spots=[[P.x+P.vx*.6+ex(),P.y+P.vy*.6+ex()]];for(let i=1;i<ph;i++){const a=Math.random()*TAU,r=rnd(170,330);T.spots.push([P.x+Math.cos(a)*r,P.y+Math.sin(a)*r])}}
+  else if(b.s===1)T.R=640+90*ph;
+  else if(b.s===2){T.a=Math.atan2(P.y+ex()-b.y,P.x+ex()-b.x);T.w=.3+.05*ph}
+  else{T.x=P.x+P.vx*.4+ex();T.y=P.y+P.vy*.4+ex();T.r=150+40*ph}
+  b.tele=T;tone("square",420,640,.25,.04,AU.sfx);tone("square",420,640,.25,.04,AU.sfx,.32)}
+function jefaFire(b,ph,Rd,A,C,z){const T=b.tele,hit=()=>feedback("medium",P.x,P.y-A);
+  if(b.s===0){const sx=b.x,sy=b.y-b.r*.75-70;for(const s of T.spots){const pts=[[sx,sy]];for(let i=1;i<7;i++){const k=i/7;pts.push([lerp(sx,s[0],k)+(Math.random()-.5)*40,lerp(sy,s[1],k)+(Math.random()-.5)*16])}
+      pts.push([s[0],s[1]]);bolts.push({pts,t:.4,x:s[0],y:s[1]});
+      for(const t of trees)if(t.st===0&&Math.abs(t.x-s[0])<60&&dist(t.x,t.y,s[0],s[1])<55){t.st=1;t.fire=rnd(20,30);t.wet=0;break}
+      if(dist(P.x,P.y,s[0],s[1])<T.r){jefaHurt(.1,ph>=2);mecFloat("¡rayo!",1);hit()}}
+    flash=Math.max(flash,.3);thunder(ph>=2)}
+  else if(b.s===1){if(dist(P.x,P.y,b.x,b.y)<T.R){P.w=Math.max(0,P.w-C*(.16+.06*ph)*(WATER[z]?.5:1)*mecArmor());mecFloat("golpe de calor",1);hit()}
+    noiseShot(1.2,"bandpass",900,300,.35,AU.sfx,.6);MEC.wave={x:b.x,y:b.y,t:0,R:T.R}}
+  else if(b.s===2){const dx=P.x-b.x,dy=P.y-b.y,dd=Math.hypot(dx,dy)||1;let da=Math.atan2(dy,dx)-T.a;da=Math.atan2(Math.sin(da),Math.cos(da));
+    if(Math.abs(da)<T.w&&dd<1300){const f=(620+140*ph)*(fm().windImm?.35:1);MEC.pvx+=Math.cos(T.a)*f;MEC.pvy+=Math.sin(T.a)*f;P.w=Math.max(0,P.w-C*.05*mecArmor());if(P.rain)stopRain();mecFloat("¡ráfaga!",1);hit()}
+    whoosh();MEC.gust={x:b.x,y:b.y,a:T.a,w:T.w,t:0}}
+  else{if(dist(P.x,P.y,T.x,T.y)<T.r){MEC.frz=1.6+.4*ph;if(up("granizo"))MEC.hcd+=2;if(up("neblina"))MEC.fcd+=2;if(up("nevada"))MEC.scd+=2;P.cool+=1.5;P.w=Math.max(0,P.w-C*.05*mecArmor());mecFloat("¡congelada!",1);hit()}
+    noiseShot(.9,"highpass",5000,1800,.25,AU.sfx);MEC.ice={x:T.x,y:T.y,r:T.r,t:0}}}
+function jefaUpdate(dt,z,Rd,A,C,rcx,rcy){const b=jefa;if(!b)return;const B=b.B;b.t+=dt;b.hitT=Math.max(0,b.hitT-dt);
+  rivalT=Math.max(rivalT,2);seedT=Math.max(seedT,5); // durante el duelo no vienen otras
+  const d=dist(b.x,b.y,P.x,P.y)||1;
+  if(b.leave){b.leave+=dt;b.tele=null;b.x+=(b.x-P.x)/d*260*dt;b.y+=(b.y-P.y)/d*260*dt;if(b.leave>6){jefa=null;jefaUI()}return}
+  const ph=b.hp>66?1:b.hp>30?2:3;
+  if(ph!==b.ph){b.ph=ph;b.atk=Math.min(b.atk,2.5);feedback("large",b.x,b.y-b.r*.75-70);sRoar();
+    if(ph===2)toast("Aviso",B.n+" se acoraza","Su coraza aguanta los rayos: rómpela con granizo o espera a que respire.",alarm);
+    else toast("Aviso",B.n+" está débil","Remátala o métete dentro para absorberla. Ahora huye y ataca más deprisa.",alarm)}
+  // coraza desde la fase 2: respira 4 s de cada 14 y el granizo la rompe
+  b.brk=Math.max(0,b.brk-dt);b.breath-=dt;if(b.breath<=0)b.breath=14;b.shield=ph>=2&&b.brk<=0&&b.breath>4?1:0;
+  // movimiento: rodea a la nube; débil, huye
+  const [bwx,bwy]=windAt(b.x,b.y);let vx=bwx*.15,vy=bwy*.15;
+  if(ph===3){vx+=(b.x-P.x)/d*70;vy+=(b.y-P.y)/d*70}
+  else{b.orb+=dt*.25;const want=Rd*1.2+b.r*.5,tx=P.x+Math.cos(b.orb)*want,ty=P.y+Math.sin(b.orb)*want*.8,dd=dist(tx,ty,b.x,b.y)||1,sp=Math.min(150,dd*1.2);vx+=(tx-b.x)/dd*sp;vy+=(ty-b.y)/dd*sp}
+  if(ph<3&&d<Rd*.6+b.r*.5+70){vx+=(b.x-P.x)/d*170;vy+=(b.y-P.y)/d*170} // no embiste: el choque lo eliges tú
+  if(MEC.hid&&ph<3){vx*=.4;vy*=.4}
+  b.x=clamp(b.x+vx*dt,100,W-100);b.y=clamp(b.y+vy*dt,100,H-100);
+  // efectos constantes
+  if(b.s===1&&d<700)P.w=Math.max(0,P.w-C*.012*ph*dt*(MEC.hid?.5:1)*(WATER[z]?.3:1));
+  if(b.s===2&&d<900){P.x=clamp(P.x-(P.y-b.y)/d*45*dt,40,W-40);P.y=clamp(P.y+(P.x-b.x)/d*45*dt,40,H-40)}
+  // ataques: aviso en el suelo y, 1,4 s después, el golpe
+  if(!b.tele){b.atk-=dt;if(b.atk<=0&&d<1500){b.atk=[0,6.5,5,4][ph];jefaTele(b,ph,Rd)}}
+  else{b.tele.t-=dt;if(b.tele.t<=0){jefaFire(b,ph,Rd,A,C,z);b.tele=null}}
+  // daño: granizo (rompe la coraza), lluvia (solo a la Calima); los rayos van por jefaBolt
+  if(MEC.hail&&dist(b.x,b.y,rcx,rcy)<Rd*1.2+b.r){b.hp-=dt*(4+2*up("granizo"))*B.hail;b.hitT=.2;if(ph>=2&&b.brk<=0){mecFloat("¡coraza rota!",0,b.x,b.y-b.r*.75-70-b.r);feedback("medium",b.x,b.y-b.r*.75-70)}if(ph>=2)b.brk=7}
+  if(B.rain&&P.rain&&dist(b.x,b.y,rcx,rcy)<Rd+b.r*.6){b.hp-=dt*B.rain*(b.shield?.5:1);b.hitT=.15}
+  if(b.hp<=0)return jefaWin(false);
+  // contacto: te roba agua y tamaño; débil, la absorbes tú
+  if(d<Rd*.6+b.r*.5){if(ph===3){b.abs+=dt;FEEL.trauma=Math.max(FEEL.trauma,.25);if(b.abs>=3)return jefaWin(true)}
+    else if(!MEC.hid){MEC.stl+=dt;jefaHurt(.07*dt,0);FEEL.trauma=Math.max(FEEL.trauma,.3);if(MEC.stl>1.4){MEC.stl=0;jefaHurt(0,1);zap();b.hp=Math.min(100,b.hp+2)}}}
+  else{b.abs=Math.max(0,b.abs-dt*.5);MEC.stl=Math.max(0,MEC.stl-dt)}
+  // te vence si te deja sin agua a su lado (no te mata: te quita tamaño)
+  if(d<1700&&P.w<=C*.015){MEC.lowT+=dt;if(MEC.lowT>4){MEC.lowT=0;return jefaLose()}}else MEC.lowT=0;
+  if(d>2600){b.far+=dt;if(b.far>30)return jefaGo("se aburre y se marcha")}else b.far=0;
+  if(b.t>300)jefaGo("se cansa y se marcha")}
+function jefaUI(){const bb=$("bossBar"),b=jefa;bb.hidden=!b||!!b.leave;bb._k="";if(!b)return;$("bossName").textContent=b.B.n;$("bossTitle").textContent=b.B.t}
+function mecAct(id,sub,own,ok,on,txt){const b=$(id),k=(own?1:0)+"|"+(ok?1:0)+"|"+(on?1:0)+"|"+txt;if(b._k===k)return;b._k=k;
+  b.hidden=!own;b.disabled=!ok;b.classList.toggle("ready",!!ok);b.classList.toggle("on",!!on);$(sub).textContent=txt}
+function mecHud(){const cd=c=>Math.ceil(c)+" s",nr=fm().noRain;
+  let c=mecHailCost(),on=!!MEC.hail;mecAct("btnHail","hailSub",up("granizo"),!on&&MEC.hcd<=0&&!nr&&P.m>=3&&P.w>=c,on,on?"cayendo":nr?"otra forma":P.m<3?"tamaño 3":MEC.hcd>0?cd(MEC.hcd):P.w<c?"más agua":"tecla R");
+  c=mecFogCost();on=MEC.fogT>0;mecAct("btnFog","fogSub",up("neblina"),!on&&MEC.fcd<=0&&P.w>=c,on,on?"activa":MEC.fcd>0?cd(MEC.fcd):P.w<c?"más agua":"tecla F");
+  c=mecSnowCost();on=MEC.snowT>0;mecAct("btnSnow","snowSub",up("nevada"),!on&&MEC.scd<=0&&!nr&&P.w>=c,on,on?"nevando":nr?"otra forma":MEC.scd>0?cd(MEC.scd):P.w<c?"más agua":season===1?"verano: poca":"tecla G");
+  const b=jefa,bb=$("bossBar");if(!b||bb.hidden)return;
+  const txt=b.ph===1?"Fase 1 · "+["lanza rayos","seca el aire","sopla ráfagas","aliento helado"][b.s]:b.ph===2?(b.shield?(up("granizo")?"Fase 2 · acorazada: rómpela con granizo":"Fase 2 · acorazada: espera a que coja aire"):b.brk>0?"Fase 2 · coraza rota: ¡ataca!":"Fase 2 · coge aire sin coraza: ¡ataca!"):(b.abs>0?"Fase 3 · absorbiendo "+Math.round(b.abs/3*100)+" %":"Fase 3 · débil: remátala o absórbela");
+  const k=Math.ceil(b.hp)+"|"+txt+"|"+b.shield+"|"+b.ph;if(bb._k===k)return;bb._k=k;
+  $("bossHpF").style.width=clamp(b.hp,0,100)+"%";$("bossPh").textContent=txt;bb.classList.toggle("shield",!!b.shield);bb.classList.toggle("weak",b.ph===3)}
+
+/* simulación */
+function mecUpdate(dt,z,Rd,A,C){
+  if(MEC.sv!==save){MEC.sv=save;jefa=null;MEC.fogs.length=0;MEC.snows.length=0;MEC.sk.length=0;MEC.hail=null;MEC.fogT=MEC.snowT=MEC.frz=MEC.lowT=0;jefaUI()} // partida nueva
+  // congelada o frenada por la Ventisca; empujada por la Borrasca
+  let k=1;if(MEC.frz>0){MEC.frz-=dt;k=.3}
+  if(jefa&&!jefa.leave&&jefa.s===3&&dist(jefa.x,jefa.y,P.x,P.y)<650)k=Math.min(k,.75);
+  if(MEC.lx!==null&&k<1&&dist(MEC.lx,MEC.ly,P.x,P.y)<400){P.x=MEC.lx+(P.x-MEC.lx)*k;P.y=MEC.ly+(P.y-MEC.ly)*k}
+  if(MEC.pvx||MEC.pvy){P.x=clamp(P.x+MEC.pvx*dt,40,W-40);P.y=clamp(P.y+MEC.pvy*dt,40,H-40);const f=Math.exp(-2.4*dt);MEC.pvx*=f;MEC.pvy*=f;if(Math.hypot(MEC.pvx,MEC.pvy)<5)MEC.pvx=MEC.pvy=0}
+  MEC.lx=P.x;MEC.ly=P.y;
+  MEC.hcd=Math.max(0,MEC.hcd-dt);MEC.fcd=Math.max(0,MEC.fcd-dt);MEC.scd=Math.max(0,MEC.scd-dt);
+  const [wx,wy]=windAt(P.x,P.y),rcx=P.x+wx*.3,rcy=P.y+wy*.3;
+  // granizo
+  const HL=MEC.hail;
+  if(HL){HL.t-=dt;const hr=Rd*.95,lv=up("granizo");FEEL.trauma=Math.max(FEEL.trauma,.18);
+    const n=Math.min(30,Math.round((6+P.m*.4)*dt*60));for(let i=0;i<n;i++){const a=Math.random()*TAU,q=Math.sqrt(Math.random())*hr;MEC.pel.push({x:rcx+Math.cos(a)*q,y:rcy+Math.sin(a)*q*.75,h:A*(.5+Math.random()*.5),s:0})}
+    const inH=o=>Math.abs(o.x-rcx)<hr&&dist(o.x,o.y,rcx,rcy)<hr;
+    const flee=(o,v)=>{const d=dist(o.x,o.y,rcx,rcy)||1;o.tx=clamp(o.x+(o.x-rcx)/d*v,40,W-40);o.ty=clamp(o.y+(o.y-rcy)/d*v,40,H-40);o.wait=0};
+    for(const p of people)if(inH(p)){p.wet=7;flee(p,260);if(!HL.hit.has(p)){HL.hit.add(p);HL.np++}}
+    for(const q of kids)if(inH(q)){q.wet=6;flee(q,120)}
+    for(const arr of [dogs,sheep,deer,ducks])for(const q of arr)if(inH(q)){q.wet=6;flee(q,arr===ducks?60:220)}
+    for(const c of cows)if(!c.fly&&inH(c)){c.wet=6;flee(c,160);if(!HL.hit.has(c)){HL.hit.add(c);if(Math.random()<.3)moo()}}
+    for(const f of flocks)if(inH(f))f.sc=4;
+    if((crows.st==="eat"||crows.st==="in")&&dist(crows.x,crows.y,rcx,rcy)<hr+60)scareCrows();
+    for(const f of fields)if(f.st===1||f.st===2){const cx=clamp(rcx,f.x,f.x+f.w),cy=clamp(rcy,f.y,f.y+f.h);
+      if(dist(cx,cy,rcx,rcy)<hr*.7){f.st=3;f.t=0;f.mine=0;karma(-6);cnt("hailF");unlock("m_pedrisco");floats.push({x:f.x+f.w/2,y:f.y+f.h/2,t:2.2,txt:"cosecha perdida",bad:1});feedback("small",f.x+f.w/2,f.y+f.h/2)}}
+    for(let i=rivals.length-1;i>=0;i--){const c=rivals[i];if(HL.hit.has(c)||dist(c.x,c.y,rcx,rcy)>hr+c.r*.8)continue;HL.hit.add(c);
+      const dm=2+lv;c.m-=dm;c.stun=Math.max(c.stun,4);zap();feedback("small",c.x,c.y-c.r*.75-50);
+      if(c.m<=0){rivals.splice(i,1);cnt("rivK");gain(35,c.x,c.y);floats.push({x:c.x,y:c.y-80,t:2,txt:"rival deshecha"})}
+      else{c.r=52+24*Math.sqrt(c.m);floats.push({x:c.x,y:c.y-c.r-60,t:2,txt:"granizada −"+dm})}}
+    const sp=seedPlane;if(sp&&!sp.flee&&dist(sp.x,sp.y,P.x,P.y-A)<hr*2){sp.flee=1;gain(20,sp.x,sp.y)}
+    if(HL.t<=0){if(HL.np)karma(-Math.min(4,Math.ceil(HL.np/3)));MEC.hail=null}}
+  if(MEC.pel.length){for(const p of MEC.pel){if(p.h>0)p.h-=dt*900;else p.s+=dt}MEC.pel=MEC.pel.filter(p=>p.s<.6)}
+  // niebla densa: rastro en el suelo
+  if(MEC.fogT>0){MEC.fogT-=dt;MEC.fogN-=dt;if(MEC.fogN<=0&&MEC.fogs.length<90){MEC.fogN=.28;const life=16+5*up("neblina");MEC.fogs.push({x:P.x+rnd(-20,20),y:P.y+rnd(-20,20),r:Rd*.8+40,life,ph:Math.random()*6})}}
+  let hid=false;
+  for(let i=MEC.fogs.length-1;i>=0;i--){const f=MEC.fogs[i];f.life-=dt;f.x+=WGX*.05*dt;f.y+=WGY*.05*dt;if(f.life<=0)MEC.fogs.splice(i,1)}
+  if(MEC.fogs.length){let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const f of MEC.fogs){x0=Math.min(x0,f.x-f.r);y0=Math.min(y0,f.y-f.r);x1=Math.max(x1,f.x+f.r);y1=Math.max(y1,f.y+f.r)}
+    const inF=(x,y)=>{if(x<x0||x>x1||y<y0||y>y1)return false;for(const f of MEC.fogs)if(Math.abs(f.x-x)<f.r&&dist(f.x,f.y,x,y)<f.r*Math.min(1,f.life/3))return true;return false};
+    hid=inF(P.x,P.y);
+    for(const arr of [people,kids,dogs,sheep,deer,cows])for(const o of arr){if(o.fly||!inF(o.x,o.y))continue;
+      if(o._mf===frameN-1){o.x=o._mx+(o.x-o._mx)*.35;o.y=o._my+(o.y-o._my)*.35}o._mx=o.x;o._my=o.y;o._mf=frameN}
+    for(const c of cars)if(c.x!==undefined&&inF(c.x,c.y)){c.p=clamp(c.p-c.v*dt/(c.hor?CITY.w:CITY.h)*.7,0,1);if(!c._fz||time-c._fz>40){c._fz=time;cnt("fogCar");if(ct("fogCar")>=10)unlock("m_sopa")}}}
+  if(hid&&started){let lost=false;
+    for(const c of rivals)if(dist(c.x,c.y,P.x,P.y)<1000){if(c.hunt&&c.stun<=0)lost=true;c.stun=Math.max(c.stun,.25)}
+    const sp=seedPlane;if(sp&&!sp.flee&&!sp.hit){sp.flee=1;lost=true;floats.push({x:sp.x,y:sp.y-30,t:2,txt:"te ha perdido de vista"})}
+    if(save.karma<=-15&&save.form!=="cirro")for(const c of CANNONS){if(dist(c.x,c.y,P.x,P.y)<780)lost=true;c.t=Math.max(c.t,.5)}
+    if(lost)unlock("m_rastro");if(!MEC.hid&&time-MEC.hidT>6){MEC.hidT=time;mecFloat("oculta en la niebla")}}
+  MEC.hid=hid;
+  // nevada: cae unos segundos siguiéndote y luego cuaja
+  if(MEC.snowT>0){MEC.snowT-=dt;const s=MEC.snowP;
+    if(s){s.x+=(rcx-s.x)*Math.min(1,dt*3);s.y+=(rcy-s.y)*Math.min(1,dt*3);s.r=Math.min(s.R,s.r+s.R*dt/2);
+      const n=Math.round(Math.min(30,4+P.m*.6)*dt*60*(s.s<.3?.4:1));for(let i=0;i<n;i++){const a=Math.random()*TAU,q=Math.sqrt(Math.random())*s.r;drops.push({x:rcx+Math.cos(a)*q,y:rcy+Math.sin(a)*q*.75,h:A*(.6+Math.random()*.4),snow:true,s:0})}
+      if(season===3&&z==="pueblo")cnt("snowV",dt);snowLv=Math.min(1,snowLv+dt*.02)}
+    if(MEC.snowT<=0&&s){MEC.snowP=null;s.r=s.R;mecSettle(s)}}
+  for(let i=MEC.snows.length-1;i>=0;i--){const s=MEC.snows[i];if(s===MEC.snowP)continue;s.life-=dt;if(s.life<=0)MEC.snows.splice(i,1)}
+  if(MEC.snows.length){const inS=(x,y)=>{for(const s of MEC.snows)if(s.s>=.3&&Math.abs(s.x-x)<s.r&&dist(s.x,s.y,x,y)<s.r)return s;return null};
+    for(const c of cars){if(c.x===undefined)continue;const L=c.hor?CITY.w:CITY.h;
+      if(c._sk>0){c._sk-=dt;c.p=clamp(c.p+c.v*dt/L*Math.sin(time*14+c.l)*1.4,0,1);if(c._sk<=0&&Math.random()<.35)c.v=-c.v;continue}
+      if(inS(c.x,c.y)&&Math.random()<dt*.9){c._sk=rnd(1,1.8);cnt("skid");if(ct("skid")>=10)unlock("m_derrape");
+        if(Math.random()<.4)floats.push({x:c.x,y:c.y-20,t:1.5,txt:"¡derrapa!"});tone("sawtooth",rnd(900,1100),rnd(500,700),.25,.015,AU.sfx)}}
+    for(const s of MEC.snows)if(s.s>=.3)for(const t of trees)if(t.st===1&&Math.abs(t.x-s.x)<s.r&&Math.abs(t.y-s.y)<s.r&&dist(t.x,t.y,s.x,s.y)<s.r){
+      t.st=0;t.fire=0;t.wet=10;save.ext++;if(season===1)cnt("extSum");gain(2);karma(1);unlock("bombero")}
+    for(const s of MEC.snows)if(s.kids&&s.man<1&&s.life>4){s.man=Math.min(1,s.man+dt/10);if(s.man>=1){floats.push({x:s.x,y:s.y-50,t:2.4,txt:"¡muñeco de nieve!"});gain(10,s.x,s.y);sKids()}}}
+  for(let i=MEC.sk.length-1;i>=0;i--){const q=MEC.sk[i],s=q.p;if(s.life<4||!MEC.snows.includes(s))q.out=1;
+    if(q.out){q.a-=dt/1.5;if(q.a<=0){MEC.sk.splice(i,1);continue}}
+    if(q.w>0)q.w-=dt;else if(goTo(q,q.tx,q.ty,42,dt)){q.w=rnd(.2,1.4);const a=Math.random()*TAU,r=Math.sqrt(Math.random())*s.r*.6;q.tx=s.x+Math.cos(a)*r;q.ty=s.y+Math.sin(a)*r*.8}
+    q.th-=dt;if(q.th<=0&&!q.out){q.th=rnd(1.2,3);const o=MEC.sk[(Math.random()*MEC.sk.length)|0];if(o!==q&&o.p===s)MEC.balls.push({x0:q.x,y0:q.y,x1:o.x,y1:o.y,t:0})}}
+  if(MEC.balls.length){for(const b of MEC.balls)b.t+=dt*1.6;MEC.balls=MEC.balls.filter(b=>b.t<1)}
+  for(const k2 of ["wave","gust","ice"])if(MEC[k2]){MEC[k2].t+=dt;if(MEC[k2].t>.9)MEC[k2]=null}
+  // jefas: una por estación, desde el nivel 6, con aviso previo
+  if(started){const sid=Math.floor(save.day/2),M=stM();
+    if(sid!==MEC.sid){MEC.sid=sid;MEC.bwT=rnd(45,100);MEC.warnT=0}
+    if(!jefa&&M.bs!==sid&&save.lvl>=6&&!MEC.warnT){MEC.bwT-=dt;if(MEC.bwT<=0&&P.m>=4){MEC.warnT=8;const B=JEFAS[season];toast("Aviso","Se acerca "+B.n,B.t[0].toUpperCase()+B.t.slice(1)+" viene a por ti. Ten agua a mano.",alarm)}}
+    if(MEC.warnT>0){MEC.warnT-=dt;if(MEC.warnT<=0){MEC.warnT=0;if(!jefa)jefaSpawn(season)}}
+    jefaUpdate(dt,z,Rd,A,C,rcx,rcy)}
+  mecHud()}
+function mecSettle(s){if(s.s<.3)return;let nH=0;
+  for(const h of houses)if(dist(h.x,h.y,s.x,s.y)<s.r)nH++;for(const b of blds)if(dist(b.x,b.y,s.x,s.y)<s.r)nH+=.5;
+  if(dist(YARD.x+YARD.w/2,YARD.y+YARD.h/2,s.x,s.y)<s.r+60)nH+=4;
+  if(season===3&&zoneAt(s.x,s.y)==="pueblo")cnt("snowV",3);
+  if(nH<1||dark>.75)return;const n=clamp(Math.round(2+nH/2),3,7);s.kids=n;
+  for(let i=0;i<n;i++){const a=Math.random()*TAU;MEC.sk.push({p:s,x:s.x+Math.cos(a)*s.r*.85,y:s.y+Math.sin(a)*s.r*.7,tx:s.x+rnd(-40,40),ty:s.y+rnd(-30,30),w:rnd(0,1),th:rnd(1,3),a:1,ang:0,uc:ucol[(Math.random()*ucol.length)|0]})}
+  if(MEC.sk.length>28)MEC.sk.splice(0,MEC.sk.length-28);
+  karma(3);gain(15,s.x,s.y);cnt("snowKids");unlock("m_ninos");floats.push({x:s.x,y:s.y-40,t:2.4,txt:"¡los niños salen a jugar!"});sKids()}
+
+/* dibujo (coordenadas del mundo) */
+function mecDraw(){const vis=(x,y,m)=>x>X0-m&&x<X0+VW+m&&y>Y0-m&&y<Y0+VH+m,el=(x,y,r)=>{ctx.beginPath();ctx.arc(x,y,r,0,TAU);ctx.fill()};
+  // nieve en el suelo
+  for(const s of MEC.snows)if(vis(s.x,s.y,s.r*1.3)){const a=clamp(s.life/4,0,1)*(s===MEC.snowP?Math.min(1,s.r/s.R):1),sl=s.s<.3;
+    ctx.globalAlpha=a*(sl?.2:.34);ctx.fillStyle=sl?"#a9b6ba":"#eef3f4";puffPath(s.x,s.y,s.r*.72,s.pf,.8);ctx.fill();
+    ctx.globalAlpha=a*(sl?.18:.3);glow(GSNOW,s.x,s.y,s.r*1.1);
+    if(!sl){const sr=s.r*.92,inn=(x,y)=>Math.abs(x-s.x)<sr&&Math.abs(y-s.y)<sr&&dist(x,y,s.x,s.y)<sr;ctx.fillStyle="#f4f6f4"; // tejados, azoteas y copas nevados
+      for(const h of houses)if(inn(h.x,h.y)){ctx.save();ctx.translate(h.x,h.y);ctx.rotate(h.rot);ctx.globalAlpha=a*.9;ctx.fillRect(-h.w/2+2,-h.h/2+2,h.w-4,h.h/2-2);ctx.globalAlpha=a*.6;ctx.fillRect(-h.w/2+2,0,h.w-4,h.h/2-2);ctx.restore()}
+      ctx.globalAlpha=a*.6;for(const q of blds)if(inn(q.x,q.y))ctx.fillRect(q.x-q.w/2+5,q.y-q.h/2+5,q.w-10,q.h-10);
+      ctx.globalAlpha=a*.85;for(const t of trees)if(t.st!==2&&inn(t.x,t.y)){hex(t.x-t.r*.12,t.y-t.r*.12,t.r*.62,t.rot);ctx.fill()}}
+    if(!sl){ctx.fillStyle="#ffffff";for(let i=0;i<12;i++){const tw=Math.sin(time*2.5+i*1.9);if(tw<.4)continue;ctx.globalAlpha=a*(tw-.4);const ag=i*2.39,rr=s.r*.75*((i*37%10)/10);el(s.x+Math.cos(ag)*rr,s.y+Math.sin(ag)*rr*.8,1.8)}}
+    if(s.man>0){const m=s.man*1.5,x=s.x,y=s.y;ctx.globalAlpha=a;ctx.fillStyle="rgba(6,12,16,.25)";el(x+6,y+8,13*m);ctx.fillStyle="#f4f6f4";el(x,y,13*m);el(x,y-11*m,9*m);el(x,y-20*m,6*m);
+      if(m>.8){ctx.fillStyle="#1b2226";el(x-2,y-21*m,1.2);el(x+2,y-21*m,1.2);el(x,y-10*m,1.2);el(x,y-6*m,1.2);ctx.fillStyle="#e2a94b";poly([[x,y-19*m],[x+7,y-18*m],[x,y-17*m]]);ctx.fill()}}}
+  // niebla densa
+  for(const f of MEC.fogs)if(vis(f.x,f.y,f.r*1.6)){ctx.globalAlpha=.5*Math.min(1,f.life/3,(16+5*up("neblina")-f.life)/1.2+.2);glow(GFOG,f.x+Math.sin(time*.4+f.ph)*10,f.y,f.r*1.5)}
+  ctx.globalAlpha=1;
+  // derrapes, niños, bolas de nieve
+  ctx.strokeStyle="rgba(40,48,52,.55)";ctx.lineWidth=2;
+  for(const c of cars)if(c._sk>0&&c.x!==undefined&&vis(c.x,c.y,40)){ctx.beginPath();ctx.arc(c.x,c.y,14,time*9,time*9+2.2);ctx.stroke();ctx.beginPath();ctx.arc(c.x,c.y,18,time*9+3,time*9+4.6);ctx.stroke()}
+  for(const q of MEC.sk)if(vis(q.x,q.y,20)){ctx.globalAlpha=clamp(q.a,0,1);ctx.fillStyle=q.uc;el(q.x,q.y,5.5);ctx.fillStyle="#d9b48c";el(q.x,q.y,3)}
+  ctx.fillStyle="#f4f6f4";for(const b of MEC.balls){ctx.globalAlpha=1;el(lerp(b.x0,b.x1,b.t),lerp(b.y0,b.y1,b.t)-Math.sin(b.t*Math.PI)*28,2.4)}
+  // granizo
+  ctx.fillStyle="#eef6f8";for(const p of MEC.pel)if(vis(p.x,p.y,60)){if(p.h>0){ctx.globalAlpha=1;ctx.fillRect(p.x-2,p.y-p.h-9,4,13)}
+    else{const k=p.s/.6;ctx.globalAlpha=1-k;el(p.x,p.y-Math.abs(Math.sin(k*Math.PI*2))*9*(1-k),3.6)}}
+  ctx.globalAlpha=1;
+  // jefa
+  const b=jefa;
+  if(b){const B=b.B,al=b.leave?Math.max(0,1-b.leave/5):Math.min(1,b.t/2),cy=b.y-b.r*.75-70,col="rgba("+B.col+",";
+    // zona de efecto constante
+    if(!b.leave&&(b.s===1||b.s===3)){ctx.globalAlpha=.5*al;ctx.strokeStyle=col+".5)";ctx.lineWidth=3;ctx.setLineDash([18,14]);ctx.beginPath();ctx.ellipse(b.x,b.y,b.s===1?700:650,(b.s===1?700:650)*.8,0,0,TAU);ctx.stroke();ctx.setLineDash([])}
+    // avisos de ataque
+    const T=b.tele;if(T){const p=1-T.t/T.t0,pu=.55+.45*Math.sin(time*18);ctx.globalAlpha=al;
+      if(b.s===0)for(const s of T.spots){ctx.fillStyle=col+(.12+.25*p)+")";el(s[0],s[1],T.r*p);ctx.strokeStyle=col+pu+")";ctx.lineWidth=4;ctx.beginPath();ctx.arc(s[0],s[1],T.r,0,TAU);ctx.stroke()}
+      else if(b.s===1){ctx.strokeStyle=col+pu+")";ctx.lineWidth=8;ctx.beginPath();ctx.ellipse(b.x,b.y,T.R,T.R*.8,0,0,TAU);ctx.stroke();ctx.fillStyle=col+(.06+.12*p)+")";ctx.beginPath();ctx.ellipse(b.x,b.y,T.R*p,T.R*.8*p,0,0,TAU);ctx.fill()}
+      else if(b.s===2){ctx.fillStyle=col+(.08+.16*p)+")";ctx.beginPath();ctx.moveTo(b.x,b.y);ctx.arc(b.x,b.y,1300,T.a-T.w,T.a+T.w);ctx.closePath();ctx.fill();
+        ctx.strokeStyle=col+pu+")";ctx.lineWidth=3;ctx.beginPath();for(let i=0;i<7;i++){const a=T.a+(i/6-.5)*T.w*1.6,r0=((time*500+i*180)%1300);ctx.moveTo(b.x+Math.cos(a)*r0,b.y+Math.sin(a)*r0);ctx.lineTo(b.x+Math.cos(a)*(r0+90),b.y+Math.sin(a)*(r0+90))}ctx.stroke()}
+      else{ctx.fillStyle=col+(.12+.25*p)+")";el(T.x,T.y,T.r*p);ctx.strokeStyle=col+pu+")";ctx.lineWidth=4;ctx.beginPath();ctx.arc(T.x,T.y,T.r,0,TAU);ctx.stroke()}}
+    if(MEC.wave){const w=MEC.wave,k=w.t/.9;ctx.globalAlpha=1-k;ctx.strokeStyle=col+".8)";ctx.lineWidth=14*(1-k)+2;ctx.beginPath();ctx.ellipse(w.x,w.y,w.R*(.3+.7*k),w.R*.8*(.3+.7*k),0,0,TAU);ctx.stroke()}
+    if(MEC.gust){const g=MEC.gust,k=g.t/.9;ctx.globalAlpha=1-k;ctx.strokeStyle="rgba(235,240,235,.9)";ctx.lineWidth=3;ctx.beginPath();
+      for(let i=0;i<9;i++){const a=g.a+(i/8-.5)*g.w*1.6,r0=k*1300;ctx.moveTo(g.x+Math.cos(a)*r0,g.y+Math.sin(a)*r0);ctx.lineTo(g.x+Math.cos(a)*(r0+160),g.y+Math.sin(a)*(r0+160))}ctx.stroke()}
+    if(MEC.ice){const c=MEC.ice,k=c.t/.9;ctx.globalAlpha=1-k;ctx.strokeStyle="#dff2ff";ctx.lineWidth=3;ctx.beginPath();
+      for(let i=0;i<10;i++){const a=i*TAU/10,r=c.r*(.4+.6*k);ctx.moveTo(c.x+Math.cos(a)*r*.6,c.y+Math.sin(a)*r*.6);ctx.lineTo(c.x+Math.cos(a)*r,c.y+Math.sin(a)*r)}ctx.stroke()}
+    // sombra y cuerpo
+    ctx.globalAlpha=.3*al;ctx.fillStyle="#060c10";puffPath(b.x,b.y,b.r,b.pf,.85);ctx.fill();
+    if(b.s===2){ctx.fillStyle="#b0662c";for(let i=0;i<12;i++){const a=time*2.2+i*TAU/12,r=b.r*(1.1+.25*Math.sin(i*3+time));ctx.globalAlpha=al*.9;ctx.beginPath();ctx.ellipse(b.x+Math.cos(a)*r,cy+Math.sin(a)*r*.6,5,2.6,a*3,0,TAU);ctx.fill()}}
+    if(b.s===3){ctx.fillStyle="#eef6f8";for(let i=0;i<16;i++){const a=time*1.3+i*TAU/16,r=b.r*(.9+.5*((i*7%5)/5));ctx.globalAlpha=al*.8;el(b.x+Math.cos(a)*r,cy+Math.sin(a)*r*.55+((time*40+i*30)%60),2.2)}}
+    ctx.globalAlpha=.96*al;drawCloud(b.x,cy,b.r,b.pf,b.s===3?.55:.9);
+    ctx.globalCompositeOperation="lighter";ctx.globalAlpha=(.35+.2*Math.sin(time*4+b.ph0))*al;glow(GJEFA[b.s],b.x,cy,b.r*1.35);
+    if(b.s===1){ctx.globalAlpha=.12*al;glow(GJEFA[1],b.x,b.y,700)}
+    if(b.hitT>0){ctx.globalAlpha=Math.min(1,b.hitT*3)*al;glow(GW,b.x,cy,b.r)}
+    const ex=b.r*.24,ey=cy-b.r*.02,er=b.r*.17;ctx.globalAlpha=(b.ph===3?.45:.95)*al;glow(GE,b.x-ex,ey,er);glow(GE,b.x+ex,ey,er);
+    ctx.globalCompositeOperation="source-over";
+    ctx.globalAlpha=al;ctx.strokeStyle="#1b2226";ctx.lineWidth=b.r*.05;ctx.beginPath();ctx.moveTo(b.x-ex-er,ey-er*1.1);ctx.lineTo(b.x-ex+er*.8,ey-er*.4);ctx.moveTo(b.x+ex+er,ey-er*1.1);ctx.lineTo(b.x+ex-er*.8,ey-er*.4);ctx.stroke();
+    if(b.s===0&&Math.random()<.35){ctx.strokeStyle="#fff4c9";ctx.lineWidth=3;ctx.beginPath();let x=b.x+rnd(-.6,.6)*b.r,y=cy+rnd(-.3,.3)*b.r;ctx.moveTo(x,y);for(let i=0;i<4;i++){x+=rnd(-18,18);y+=rnd(8,20);ctx.lineTo(x,y)}ctx.stroke()}
+    // corona de jefa
+    const kx=b.x,ky=cy-b.r*.78,kw=b.r*.32;ctx.fillStyle="#e2a94b";poly([[kx-kw,ky],[kx-kw,ky-kw*.7],[kx-kw*.5,ky-kw*.35],[kx,ky-kw*.85],[kx+kw*.5,ky-kw*.35],[kx+kw,ky-kw*.7],[kx+kw,ky]]);ctx.fill();
+    // coraza
+    if(b.shield){ctx.strokeStyle=col+".9)";ctx.fillStyle=col+".28)";ctx.lineWidth=3;for(let i=0;i<10;i++){const a=time*.8+i*TAU/10;hex(b.x+Math.cos(a)*b.r*1.12,cy+Math.sin(a)*b.r*.72,b.r*.17,a);ctx.fill();ctx.stroke()}}
+    if(b.abs>0){ctx.strokeStyle="#e2a94b";ctx.lineWidth=8;ctx.beginPath();ctx.arc(b.x,cy,b.r*1.15,-Math.PI/2,-Math.PI/2+TAU*b.abs/3);ctx.stroke()}
+    ctx.font="800 "+Math.round(20/zoom*.8+10)+"px Alegreya,Georgia,serif";ctx.textAlign="center";ctx.fillStyle="#ff8a6a";ctx.fillText(B.n,b.x,ky-kw-12);
+    ctx.globalAlpha=1;
+    // flecha en el borde si no se ve
+    if(!b.leave&&!vis(b.x,cy,-20)){const cx0=X0+VW/2,cy0=Y0+VH/2,a=Math.atan2(cy-cy0,b.x-cx0),mg=46/zoom,ax=clamp(b.x,X0+mg,X0+VW-mg),ay=clamp(cy,Y0+mg,Y0+VH-mg),s=16/zoom;
+      ctx.fillStyle="#b5583f";ctx.globalAlpha=.7+.3*Math.sin(time*6);poly([[ax+Math.cos(a)*s*1.4,ay+Math.sin(a)*s*1.4],[ax+Math.cos(a+2.4)*s,ay+Math.sin(a+2.4)*s],[ax+Math.cos(a-2.4)*s,ay+Math.sin(a-2.4)*s]]);ctx.fill();
+      ctx.font="700 "+Math.round(13/zoom)+"px 'Alegreya Sans',sans-serif";ctx.fillStyle="#ff8a6a";ctx.fillText(B.n,ax-Math.cos(a)*s*2.2,ay-Math.sin(a)*s*2.2+4/zoom);ctx.globalAlpha=1}}
+  // escarcha alrededor de la nube congelada
+  if(MEC.frz>0){const Rd=rad(),x=P.x,y=P.y-alt();ctx.globalAlpha=Math.min(1,MEC.frz);ctx.strokeStyle="#dff2ff";ctx.lineWidth=3;ctx.beginPath();
+    for(let i=0;i<12;i++){const a=i*TAU/12+time*.3,cx=x+Math.cos(a)*Rd*1.18,cy=y+Math.sin(a)*Rd*.8;for(let j=0;j<3;j++){const b2=a+j*Math.PI/3;ctx.moveTo(cx-Math.cos(b2)*9,cy-Math.sin(b2)*9);ctx.lineTo(cx+Math.cos(b2)*9,cy+Math.sin(b2)*9)}}
+    ctx.stroke();ctx.globalAlpha=1}}
+window.__mec={get jefa(){return jefa},jefaSpawn,mecHail,mecFog,mecSnow,MEC,stM,JEFAS};
 /* ---------- Misiones y contadores ---------- */
 function grow(n){const k=12/(11+P.m);P.mf=(P.mf||0)+n*k;const add=Math.floor(P.mf);P.mf-=add;P.m+=add;return add}
 const growTxt=a=>a>0?"+"+a+" tamaño":"+"+Math.round(P.mf*100)+" % hacia tamaño "+(P.m+1);
@@ -1876,6 +2203,7 @@ function update(dt){
   else if(K.st==="in"){if(goTo(K,K.f.x+K.f.w/2,K.f.y+K.f.h/2,150,dt))K.st="eat"}
   else if(K.st==="eat"){const f=K.f;if(f.st!==1)K.st="out";else{f.seed-=dt/24;if(f.seed<=0){f.st=0;f.t=0;f.g=0;K.st="out";if(started){karma(-4);unlock("cuervos")}}}}
   else if(goTo(K,ROOST.x,ROOST.y,170,dt)){K.st="away";K.t=rnd(35,65)}
+  mecUpdate(dt,z,Rd,A,C);
   // tornado
   if(tornado){const T=tornado;T.t-=dt;FEEL.trauma=Math.max(FEEL.trauma,.2);T.x+=(P.x-T.x)*Math.min(1,dt*1.2);T.y+=(P.y-T.y)*Math.min(1,dt*1.2);
     for(const c of cows)if(!c.fly&&dist(c.x,c.y,T.x,T.y)<75){const a=Math.random()*TAU;c.fly={t:0,a:0,vx:Math.cos(a)*90,vy:Math.sin(a)*90-30};unlock("voladora");karma(-3);gain(10);moo();feedback("small",c.x,c.y)}
@@ -2101,6 +2429,7 @@ function draw(dt){
     ctx.fill();ctx.globalAlpha=1}
   // nubes
   for(const c of clouds)if(vis(c.x,c.y,200)){const sc=Math.min(1,c.age/3),fo=c.fixed?1:clamp((c.life+4-c.age)/4,0,1);ctx.globalAlpha=.9*sc*fo;drawCloud(c.x,c.y,c.r*(.4+.6*sc),c.pf,0)}
+  mecDraw();
   // nubes rivales: oscuras, con ojos; el número dice si son más grandes que tú
   for(const c of rivals)if(vis(c.x,c.y,360)){const cy=c.y-c.r*.75-50,big=c.m>P.m;ctx.globalAlpha=.94;drawCloud(c.x,cy,c.r,c.pf,.97);
     ctx.globalCompositeOperation="lighter";ctx.globalAlpha=.25+.2*Math.sin(time*5+c.ph);glow(GR,c.x,cy,c.r*1.15);
