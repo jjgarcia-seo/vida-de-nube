@@ -199,6 +199,42 @@ h1{font-family:var(--display);font-weight:800;font-size:clamp(34px,7vw,52px);lin
   #stat{min-width:0;width:122px}
   #stat .row{flex-wrap:wrap;gap:0 10px;font-size:12px}
 }
+/* Historia y peticiones */
+#hiCv{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+#petBox{width:230px;padding:7px 10px}
+#petBox h3{margin:0;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--water);font-weight:700}
+#petList{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:8px}
+#petList li{position:relative;padding-left:13px;font-size:13px;line-height:1.25;color:var(--paper-dim)}
+#petList li>i{position:absolute;left:0;top:5px;width:7px;height:7px;border-radius:50%;background:var(--water)}
+#petList li.k-sun>i,#petList li.k-dry>i{background:var(--amber)}
+#petList li.k-fire>i{background:var(--rust)}
+#petList li.k-snow>i{background:var(--paper)}
+#petList strong{color:var(--paper);font-weight:700}
+#petList small{display:block;margin-top:2px;font-size:12px;color:var(--paper-dim);font-variant-numeric:tabular-nums}
+#petList small.bad{color:var(--amber)}
+#petList .pb{height:3px;background:var(--line);margin-top:3px}
+#petList .pb i{display:block;height:100%;background:var(--water)}
+#histCard{max-width:460px;padding:22px 22px 18px;gap:10px;animation:histIn .35s ease-out}
+@keyframes histIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+#histTop{display:flex;align-items:center;gap:14px}
+#histAva{flex:none;width:76px;height:50px}
+#histAva .c{fill:var(--paper-dim)}#histAva .h{fill:var(--paper);opacity:.45}
+#histAva .m{fill:none;stroke:var(--ink);stroke-width:1.8;stroke-linecap:round}
+#histTitle{font-family:var(--display);font-weight:800;font-size:26px;line-height:1.1;margin:2px 0 0}
+#histWho{margin:2px 0 0;font-size:13px;color:var(--paper-dim)}
+#histTxt{margin:4px 0 0;padding-left:12px;border-left:3px solid var(--amber);font-size:16px;line-height:1.5;color:var(--paper)}
+#histStat{margin:0;font-size:13px;color:var(--paper-dim)}
+@media (max-width:560px){
+  #petBox{width:150px;padding:6px 8px}
+  #petList li{font-size:12px}
+  #petList small{font-size:11px}
+  #petList small:not(.bad) span{display:none}
+  #histCard{padding:18px 16px 16px}
+  #histAva{width:60px;height:40px}
+  #histTitle{font-size:22px}
+  #histTxt{font-size:15px}
+}
+@media (prefers-reduced-motion:reduce){#histCard{animation:none}}
 </style>
 </head>
 <body>
@@ -262,6 +298,21 @@ h1{font-family:var(--display);font-weight:800;font-size:clamp(34px,7vw,52px);lin
     <div class="card">
       <header><h2>Nubario</h2><button id="btnFormClose" type="button">Cerrar</button></header>
       <ul id="formList"></ul>
+    </div>
+  </div>
+
+  <!-- Historia y peticiones: capa de flechas y bocadillos, panel de peticiones y tarjeta de la vieja nube (el JS los coloca en su sitio) -->
+  <canvas id="hiCv" aria-hidden="true"></canvas>
+  <div class="panel" id="petBox" hidden><h3>Peticiones</h3><ul id="petList"></ul></div>
+  <div class="overlay" id="histPanel" hidden>
+    <div class="card" id="histCard" role="dialog" aria-modal="true" aria-labelledby="histTitle">
+      <div id="histTop">
+        <svg id="histAva" viewBox="0 0 76 50" aria-hidden="true"><circle class="c" cx="22" cy="30" r="14"/><circle class="c" cx="40" cy="22" r="17"/><circle class="c" cx="56" cy="30" r="13"/><rect class="c" x="14" y="28" width="50" height="16" rx="8"/><circle class="h" cx="35" cy="16" r="8"/><path class="m" d="M30 29q2.5 -2.5 5 0M43 29q2.5 -2.5 5 0M35 35q4 3 8 0"/></svg>
+        <div><p class="eyebrow" id="histEye">Capítulo 1</p><h2 id="histTitle">La vieja nube</h2><p id="histWho">Te habla la vieja nube</p></div>
+      </div>
+      <p id="histTxt"></p>
+      <p id="histStat" hidden></p>
+      <button class="cta" id="btnHist" type="button">Seguir</button>
     </div>
   </div>
 
@@ -980,6 +1031,261 @@ function buildMisAll(){const box=$("misAll"),c0=curCap();box.textContent="";
     const ul=document.createElement("ul");for(const m of MIS.filter(m=>m[0]===c)){const li=document.createElement("li"),ok=!!save.mis[m[1]];li.className=ok?"done":c>c0?"later":"";
       li.append(document.createElement("i"),Object.assign(document.createElement("span"),{textContent:m[2]+(m[4]>1&&!ok&&c===c0?" ("+Math.min(m[3](),m[4])+"/"+m[4]+")":"")}));ul.appendChild(li)}box.appendChild(ul)}}
 
+/* ---------- Historia y peticiones ---------- */
+// La vieja nube cuenta la historia en tarjetas; una flecha señala dónde cumplir la misión;
+// los vecinos piden favores con plazo: ayudar da más experiencia y buena fama, hacer lo contrario algo de experiencia y mala fama.
+function stH(){if(!save.hist){const c=curCap(),seen={};for(let k=1;k<=5;k++)if(k<c){seen["s"+k]=1;if(c<6||k<5)seen["f"+k]=1}
+    save.hist={seen,ok:0,bad:0,fail:0,kinds:{}}}
+  const h=save.hist;if(!h.seen)h.seen={};if(!h.kinds)h.kinds={};return h}
+ACH.push(
+ ["h_vecina","Buena vecina","Cumple la primera petición de un vecino."],
+ ["h_pet10","La nube del barrio","Cumple 10 peticiones de los vecinos."],
+ ["h_pet30","Servicio meteorológico","Cumple 30 peticiones de los vecinos."],
+ ["h_trav","Travesura","Haz justo lo contrario de lo que te pide un vecino."],
+ ["h_trav10","Nube gamberra","Haz lo contrario de lo que te piden 10 veces."],
+ ["h_pelos","Por los pelos","Cumple una petición cuando le quedaban menos de 10 segundos."],
+ ["h_dos","A dos bandas","Cumple dos peticiones en menos de 30 segundos."],
+ ["h_sombra","Sombrilla","Da sombra a la plaza de la ciudad en pleno verano."],
+ ["h_brigada","Brigada del cielo","Apaga el incendio que te piden los bomberos."],
+ ["h_muneco","Muñeco de nieve","Haz nevar en el pueblo cuando los niños te lo pidan."],
+ ["h_todos","Vecina de todo el valle","Cumple al menos una petición de cada tipo."],
+ ["h_epilogo","La nube que fue","Escucha a la vieja nube hasta el final."]);
+// sonidos propios
+const sAsk=()=>{tone("sine",784,784,.18,.06,AU.ui);tone("sine",988,988,.25,.05,AU.ui,.12)};
+const sOk=()=>{[587,740,880,1175].forEach((f,i)=>tone("triangle",f,f,.35,.08,AU.ui,i*.07))};
+const sBad=()=>{tone("sawtooth",330,160,.4,.04,AU.ui);tone("sawtooth",247,120,.45,.035,AU.ui,.15)};
+const sCard=()=>{tone("sine",392,392,1.1,.06,AU.ui);tone("sine",587,587,1.2,.05,AU.ui,.2)};
+
+// dónde se cumple cada misión: [x,y,radio]; null si no hay un sitio concreto ahora mismo
+const hNear=(arr,f,max)=>{let b=null,bd=max||1e9;for(const o of arr){if(f&&!f(o))continue;const d=Math.abs(o.x-P.x)+Math.abs(o.y-P.y);if(d<bd){bd=d;b=o}}return b};
+const hXY=(o,r)=>o?[o.x,o.y,o.r||r||60]:null;
+const H_WAT=[{x:LAKE.x,y:LAKE.y,r:LAKE.r*.8}].concat(PONDS.map(p=>({x:p.x,y:p.y,r:p.r})),RIV_A.concat(RIV_B).map(p=>({x:p[0],y:p[1],r:60})));
+const hSea=()=>{const x=clamp(P.x,300,W-300);return[x,coastY(x)+420,300]};
+const hField=()=>{const f=hNear(fields,f=>f.st===1);return f?[f.x+f.w/2,f.y+f.h/2,160]:[FARM.x+FARM.w/2,FARM.y+FARM.h/2,500]};
+const hCloud=()=>hXY(hNear(clouds,c=>c.age>1.5),40);
+const hMote=()=>hXY(hNear(motes,null,2600),40);
+const H_CITY=[CITY.x+CITY.w/2,CITY.y+CITY.h/2,500];
+const H_ZONE={lago:[LAKE.x,LAKE.y,400],rio:[RIV_A[2][0],RIV_A[2][1],60],ciudad:H_CITY,pueblo:[VILLAGE.x,VILLAGE.y,300],puerto:[PORT.x,PORT.y,220],
+  granja:[FARM.x+FARM.w/2,FARM.y+FARM.h/2,500],montana:[MOUNT.x,MOUNT.y,700],bosque:[FORESTS[0].x,FORESTS[0].y,800]};
+const hZone=()=>{let b=null,bd=1e9;for(const k of EXPL){if(save.seen[k])continue;const p=k==="mar"?hSea():H_ZONE[k],d=dist(p[0],p[1],P.x,P.y);if(d<bd){bd=d;b=p}}return b};
+const hForm=()=>!save.forms.lenticular?[PEAK.x,PEAK.y,60]:!save.forms.estrato&&dark>.5?hSea():!save.forms.niebla&&dark>.4&&P.m<=4?hXY(hNear(H_WAT)):null;
+const hPeople=()=>hXY(hNear([{x:VILLAGE.x,y:VILLAGE.y,r:250},{x:H_CITY[0],y:H_CITY[1],r:400},{x:PORT.x,y:PORT.y,r:200}]));
+const hRival=small=>hXY(hNear(rivals,c=>!small||c.m<P.m),40);
+const MIS_WHERE={
+ a1:()=>hXY(hNear(H_WAT)),a2:hMote,a3:hCloud,a5:hField,
+ b1:hCloud,b2:hZone,b3:()=>crows.st==="in"||crows.st==="eat"?[crows.x,crows.y,120]:hField(),b4:hPeople,b5:hForm,b6:hMote,b7:hCloud,
+ c3:()=>hRival(1),c4:()=>hXY(hNear(trees,t=>t.st===1),50),c5:()=>seedPlane&&[seedPlane.x,seedPlane.y,60],
+ c6:()=>!hasA("pueblo")?[VILLAGE.x,VILLAGE.y,250]:!hasA("ciudad")?H_CITY:!hasA("puerto")?[PORT.x,PORT.y,200]:null,
+ d2:hForm,d3:()=>[ISL.x,ISL.y,250],d5:hCloud,d7:()=>[ISL.x,ISL.y,120],
+ e2:()=>hRival(0),e4:hForm,e5:hCloud};
+function hMisCalc(){const c=curCap();if(c>5)return null;
+  for(const m of MIS.filter(m=>m[0]===c&&!save.mis[m[1]]).slice(0,vw<=560?1:3)){const f=MIS_WHERE[m[1]];if(!f)continue;const p=f();if(p)return p}return null}
+
+// peticiones de los vecinos
+const H_PLAZA=cell(3,5);
+let hVilH=null;const hVil=()=>hVilH||(hVilH=houses.filter(h=>dist(h.x,h.y,VILLAGE.x,VILLAGE.y)<VILLAGE.r));
+const hDay=()=>dark<.5,hNight=()=>dark>.3;
+let petQ=[],petCd=40,hLast="",hOkT=-999,hFireT=-999,hSave=null,hRay=0,hStart=0,hStoryT=0,hMisT=0,hMis=null,petUiT=0,petSig="",hCard=null;
+const PET=[
+ {id:"granjero",who:"El granjero",ask:"pide lluvia en su sembrado",say:"Si no llueve pronto, se me secan los brotes.",how:"Llueve sobre el campo",ic:"rain",mode:"rain",need:8,bad:"ray",
+  ok:()=>season<3&&dark<.2,keep:hDay,where(){const f=hNear(fields,f=>f.st===1&&f.g<.7);return f&&{x:f.x+f.w/2,y:f.y+f.h/2,r:180,f}},
+  check:q=>q.f.st===2?1:q.f.st!==1?-1:0,
+  okT:"El sembrado ya verdea. El granjero te saluda con la gorra.",badT:"Le has chamuscado la siembra de un rayazo. Está que trina.",
+  failT:"El granjero se ha cansado de mirar al cielo.",goneT:"La siembra se ha perdido antes de que llegaras.",lateT:"Se hace de noche y el granjero se va a casa."},
+ {id:"recreo",who:"Los niños del colegio",ask:"piden que no llueva en el recreo",say:"¡Es la hora del recreo! Tápanos el sol, pero sin mojarnos.",how:"Quédate sobre el patio sin llover",ic:"dry",mode:"dry",need:12,bad:"rain",
+  ok:()=>season!==1&&dark<.1&&tday<.42,keep:()=>dark<.3,where:()=>({x:YARD.x+YARD.w/2,y:YARD.y+YARD.h/2,r:80}),
+  okT:"Recreo perfecto: ni sol de castigo ni charcos. ¡Te hacen dibujos!",badT:"Recreo pasado por agua. Los niños vuelven a clase empapados.",
+  failT:"Se acabó el recreo sin noticias tuyas.",lateT:"Suena el timbre: se acabó el recreo."},
+ {id:"bomberos",who:"Los bomberos",ask:"piden apagar un incendio",say:"¡Hay fuego en el bosque! Necesitamos lluvia, y rápido.",how:"Llueve sobre las llamas",ic:"fire",mode:"fire",need:1,bad:"ray",
+  ok:()=>season!==3&&time-hFireT>240,
+  where(){const b=hNear(trees,t=>t.st===1,4200);if(b)return{x:b.x,y:b.y,r:220};
+    for(let k=0;k<50;k++){const t=trees[(Math.random()*trees.length)|0],d=dist(t.x,t.y,P.x,P.y);if(t.st===0&&inForest(t.x,t.y)&&d>900&&d<3400)return{x:t.x,y:t.y,r:220,tree:t}}return null},
+  start(w){hFireT=time;if(w.tree)for(const o of [w.tree].concat(w.tree.nb.slice(0,2)))if(o.st===0){o.st=1;o.fire=rnd(30,38);o.wet=0}},
+  check(q){let n=0;for(const t of trees)if(t.st===1&&Math.abs(t.x-q.x)<q.r&&Math.abs(t.y-q.y)<q.r)n++;q.n0=Math.max(q.n0||0,n);q.fr=q.n0?1-n/q.n0:0;return n?0:q.p>=1?1:-1},
+  okT:"Fuego apagado. Los bomberos te nombran voluntaria de honor.",badT:"¿Un rayo encima del fuego? Los bomberos no dan crédito.",
+  failT:"El fuego se ha consumido solo y ha dejado el bosque negro."},
+ {id:"puerto",who:"Los pescadores",ask:"piden que no llueva en el puerto",say:"Vamos a descargar el pescado: ni una gota, por favor. Un poco de sombra sí se agradece.",how:"Quédate sobre el muelle sin llover",ic:"dry",mode:"dry",need:10,bad:"rain",
+  ok:()=>season!==3&&dark<.2&&tday<.5,keep:hDay,where:()=>({x:PORT.x,y:coastY(PORT.x)+70,r:150}),
+  okT:"El pescado llega fresquito a la lonja. Te regalan un boquerón (simbólico).",badT:"Les has empapado la lonja. Se oyen palabras muy marineras.",
+  failT:"Han descargado al sol, sin tu ayuda.",lateT:"Anochece y recogen las redes."},
+ {id:"sombra",who:"La gente de la ciudad",ask:"pide sombra en la plaza",say:"Hace un calor que derrite el asfalto. ¿Nos tapas un rato el sol?",how:"Quédate sobre la plaza sin llover",ic:"sun",mode:"dry",need:14,bad:"ray",
+  ok:()=>season===1&&dark<.1&&tday<.5,keep:hDay,where:()=>({x:H_PLAZA.x+H_PLAZA.w/2,y:H_PLAZA.y+H_PLAZA.h/2,r:140}),
+  okT:"La plaza respira. Hasta las palomas te dan las gracias.",badT:"¡Un rayo en la plaza! Nadie quería tanta emoción.",
+  failT:"La plaza se ha quedado al sol del mediodía.",lateT:"Cae la tarde y ya refresca solo."},
+ {id:"jardin",who:"Una vecina del pueblo",ask:"pide lluvia para su jardín",say:"Mis geranios están mustios. ¿Me echas un buen chaparrón?",how:"Llueve sobre su casa",ic:"rain",mode:"rain",need:6,bad:"ray",
+  ok:()=>season<2&&dark<.2,keep:hDay,where(){const v=hVil();if(!v.length)return null;const h=v[(Math.random()*v.length)|0];return{x:h.x,y:h.y,r:90}},
+  okT:"Los geranios reviven. La vecina sale a aplaudirte al balcón.",badT:"Un rayo en el jardín… los geranios no lo cuentan.",
+  failT:"La vecina ha acabado regando con la manguera.",lateT:"Anochece; la vecina riega con la regadera."},
+ {id:"fiesta",who:"La comisión de fiestas",ask:"pide que no llueva en la verbena",say:"Hoy hay verbena junto a la iglesia. Ni se te ocurra llover.",how:"Quédate sobre la iglesia sin llover",ic:"dry",mode:"dry",need:12,bad:"rain",
+  ok:()=>season<2&&dark<.2&&tday<.5,keep:hDay,where:()=>({x:CHURCH.x,y:CHURCH.y,r:160}),
+  okT:"Verbena salvada. La orquesta toca un pasodoble en tu honor.",badT:"Verbena aguada: la orquesta toca bajo los paraguas.",
+  failT:"La fiesta ha seguido sin ti.",lateT:"La verbena sigue de noche, ya sin agobios."},
+ {id:"partido",who:"El estadio",ask:"pide que no llueva en el partido",say:"¡Hay partido! Si llueve, se suspende. Cúbrenos sin mojar el césped.",how:"Quédate sobre el estadio sin llover",ic:"dry",mode:"dry",need:12,bad:"rain",
+  ok:()=>dark<.85,where:()=>({x:STAD.x+STAD.w/2,y:STAD.y+STAD.h/2,r:140}),
+  okT:"Partido sin charcos y gol en el último minuto. La grada corea tu nombre.",badT:"Partido suspendido por lluvia. El árbitro mira al cielo con cara de pocos amigos.",
+  failT:"El partido ha acabado sin tu ayuda."},
+ {id:"campistas",who:"Los campistas",ask:"piden apagar la hoguera",say:"¡El viento ha avivado la hoguera y saltan chispas hacia el bosque! Apágala, por favor.",how:"Llueve sobre el camping",ic:"fire",mode:"rain",need:1.6,bad:"ray",
+  ok:()=>(season===1||season===2)&&dark>.6&&camp.fire,keep:hNight,where:()=>({x:CAMP.x,y:CAMP.y,r:90}),check:q=>camp.fire?0:q.p>0?1:-1,
+  okT:"Hoguera apagada a tiempo. Los campistas cantan una canción sobre ti.",badT:"Un rayo junto a la hoguera… los campistas huyen en pijama.",
+  failT:"Han apagado la hoguera a cubos, muertos de sueño.",goneT:"Han apagado la hoguera a cubos, muertos de sueño.",lateT:"Amanece y la hoguera se apaga sola."},
+ {id:"lago",who:"El pescador del lago",ask:"pide que no llueva en su barca",say:"De noche pican mejor. Hazme compañía, pero sin mojarme.",how:"Quédate sobre la barca sin llover",ic:"dry",mode:"dry",need:10,bad:"rain",
+  ok:()=>season!==3&&dark>.6,keep:hNight,where:()=>({x:LAKE.x+140,y:LAKE.y-120,r:90}),
+  okT:"¡Ha pescado una carpa enorme! Dice que le has dado suerte.",badT:"Le has calado hasta los huesos. Rema hacia la orilla refunfuñando.",
+  failT:"Se ha ido a dormir sin pescar nada.",lateT:"Amanece y el pescador vuelve a casa."},
+ {id:"nieve",who:"Los niños del pueblo",ask:"piden nieve en el pueblo",say:"¡Queremos hacer un muñeco de nieve! Échanos una buena nevada.",how:"Nieva sobre el pueblo",ic:"snow",mode:"rain",need:8,bad:"ray",
+  ok:()=>season===3&&dark<.2,keep:hDay,where:()=>({x:VILLAGE.x,y:VILLAGE.y,r:240}),
+  okT:"Ya hay muñeco de nieve en la plaza. Tiene una zanahoria y tu forma.",badT:"¿Un rayo en vez de nieve? Los niños se esconden en casa.",
+  failT:"Se han cansado de esperar y juegan al escondite.",lateT:"Se hace de noche y los niños se van a cenar."},
+ {id:"pastor",who:"La pastora",ask:"pide sombra para sus ovejas",say:"Las ovejas se asan con tanta lana. ¿Les das un poco de sombra?",how:"Quédate sobre el rebaño sin llover",ic:"sun",mode:"dry",need:12,bad:"ray",
+  ok:()=>season===1&&dark<.2,keep:hDay,where:()=>({x:SHEEP.x+SHEEP.w/2,y:SHEEP.y+SHEEP.h/2,r:220}),
+  okT:"Las ovejas sestean a tu sombra. La pastora te silba una tonada.",badT:"Un rayo junto al rebaño: ovejas por todo el monte.",
+  failT:"Las ovejas se han refugiado bajo un árbol.",lateT:"Anochece y el rebaño vuelve al redil."}
+];
+function petSpawn(force){const act=petQ.map(q=>q.T.id),cand=[];let tw=0;
+  for(const T of PET){if(force?T.id!==force:(act.includes(T.id)||T.id===hLast||!T.ok()))continue;const w=T.where();if(!w)continue;
+    const k=1/(1+dist(w.x,w.y,P.x,P.y)/2500);cand.push([T,w,k]);tw+=k}
+  if(!cand.length){petCd=10;return null}
+  let r=Math.random()*tw,pk=cand[0];for(const e of cand){r-=e[2];if(r<=0){pk=e;break}}
+  const T=pk[0],w=pk[1],d=dist(w.x,w.y,P.x,P.y);if(T.start)T.start(w);
+  const t0=Math.round(clamp(55+d/80+T.need*2,70,150)),q=Object.assign({T,t:t0,t0,p:0,bt:0,wet:0,need:T.need},w);
+  petQ.push(q);hLast=T.id;petCd=rnd(35,60);petSig="";
+  toast("Petición",T.who+" "+T.ask,T.say,sAsk);
+  const h=stH();if(!h.intro){h.intro=1;toast("La vieja nube","Un vecino te necesita","Busca su bocadillo en el mapa. Si le ayudas, ganas experiencia y cariño; si haces lo contrario, algo de experiencia y mala fama.")}
+  return q}
+function petEnd(q,res){const i=petQ.indexOf(q);if(i>=0)petQ.splice(i,1);const T=q.T,h=stH(),xp=25+6*save.lvl;if(petCd<18)petCd=rnd(18,32);petSig="";
+  if(res==="ok"){h.ok++;h.kinds[T.id]=1;gain(xp,q.x,q.y);karma(4);floats.push({x:q.x,y:q.y-70,t:2.4,txt:"¡gracias, nube!"});toast("Petición cumplida",T.who,T.okT,sOk);feedback("small");
+    unlock("h_vecina");if(h.ok>=10)unlock("h_pet10");if(h.ok>=30)unlock("h_pet30");if(q.t<10)unlock("h_pelos");if(time-hOkT<30)unlock("h_dos");hOkT=time;
+    if(T.id==="sombra")unlock("h_sombra");if(T.id==="bomberos")unlock("h_brigada");if(T.id==="nieve")unlock("h_muneco");if(PET.every(t=>h.kinds[t.id]))unlock("h_todos")}
+  else if(res==="bad"){h.bad++;gain(Math.round(xp*.45),q.x,q.y);karma(-5);floats.push({x:q.x,y:q.y-70,t:2.4,txt:"¡qué mala nube!",bad:1});toast("Travesura",T.who,T.badT,sBad);
+    unlock("h_trav");if(h.bad>=10)unlock("h_trav10")}
+  else{if(res==="fail"){h.fail++;if(T.mode!=="dry")karma(-1)}toast("Petición",T.who,res==="late"?(T.lateT||T.failT):res==="gone"?(T.goneT||T.failT):T.failT)}
+  persist()}
+function petPanel(){const box=$("petBox");if(!petQ.length){if(!box.hidden){box.hidden=true;petSig=""}return}
+  const fr=q=>q.fr!==undefined?q.fr:Math.min(1,q.p/q.need);
+  const sig=petQ.map(q=>q.T.id+Math.ceil(q.t)+"|"+Math.round(fr(q)*40)+(q.wet?"!":"")).join(",");if(sig===petSig)return;petSig=sig;box.hidden=false;
+  const ul=$("petList");ul.textContent="";
+  for(const q of petQ){const li=document.createElement("li");li.className="k-"+q.T.ic;
+    li.append(document.createElement("i"),Object.assign(document.createElement("strong"),{textContent:q.T.who})," "+q.T.ask);
+    const sm=document.createElement("small");sm.append(Object.assign(document.createElement("span"),{textContent:(q.wet?"¡Les estás mojando!":q.T.how)+" · "}),Math.ceil(q.t)+" s");
+    if(q.wet||q.t<15)sm.className="bad";li.appendChild(sm);
+    const pb=document.createElement("div");pb.className="pb";const b=document.createElement("i");b.style.width=(fr(q)*100)+"%";pb.appendChild(b);li.appendChild(pb);ul.appendChild(li)}}
+
+// historia: la vieja nube
+const HIST={
+ s1:["Hola, pequeña","Vaya, una nube recién nacida. Soy la vieja nube y llevo sobre este valle más inviernos de los que sabrías contar. Baja a beber, que con la tripa vacía no se llueve; la flecha dorada te dirá por dónde ir."],
+ f1:["Ya eres nube","Ya bebes, ya llueves y ya tienes tu primera mejora: eres nube de verdad. Abajo empiezan a fijarse en ti y te pedirán favores; si les ayudas, aprenderás deprisa. Si haces justo lo contrario también se aprende… pero el valle tiene buena memoria."],
+ s2:["Comer y beber","Una nube no crece sola: crece comiéndose a otras y bebiendo sin prisa. Recorre el valle, que tiene más rincones de los que parece. Y vigila a los cuervos, que van derechos a los sembrados."],
+ f2:["Cuerpo de nube","Mírate, qué cuerpo de nube se te ha puesto. Ya conoces casi todo el valle, aunque dicen que mar adentro hay algo escondido en la niebla. Pero antes de eso toca aprender a tronar."],
+ s3:["Cuidado con los rayos","Un rayo es cosa seria, pequeña: igual espanta una avioneta que quema medio bosque. Y no estás sola ahí arriba: hay nubes oscuras que querrán comerte. Aprende a ser tormenta sin ser desastre."],
+ f3:["El valle te mira","Has pasado tu primera tormenta y sigues entera. Ahora el valle sabe quién eres y ya se ha formado una opinión. Lo que hagas a partir de aquí pesa."],
+ s4:["Elige bando","Ayudar o fastidiar: las dos cosas se aprenden y las dos se pagan. Una nube buena tiene amigos abajo; una mala nube tiene cañones apuntándole. Ah, y mar adentro hay un náufrago que lleva demasiado tiempo esperando a alguien como tú."],
+ f4:["Yo también fui pequeña","Has elegido camino y el valle no lo olvidará. Yo también fui pequeña, ¿sabes?, y también me equivoqué alguna vez. Lo que queda ya es cosa de leyendas."],
+ s5:["Nada más que enseñarte","Ya no me queda nada que enseñarte, solo cosas que vivir: las cuatro estaciones, las siete formas, las tormentas grandes. Ve a por ellas. Yo te miro desde aquí arriba."],
+ f5:["Lo has hecho todo","Lo has hecho todo, nube: lo bueno, lo regular y alguna que otra trastada. Antes de que sigas flotando, déjame contarte una última cosa."]};
+const EPI=[["Una nube buena","Cuando seas vieja como yo, en el pueblo dirán: «aquella nube nos regaba el huerto y se aguantaba las ganas en los recreos». No hay mayor honor para una nube. Yo me voy deshaciendo poco a poco, como todas; el cielo del valle es tuyo."],
+ ["Una nube de cuidado","En el pueblo contarán que eras una nube de cuidado, de las que tiran rayos a los campanarios. Bueno, alguien tiene que dar que hablar, y los cuervos te adoran. Yo me voy deshaciendo poco a poco, como todas; el cielo del valle es tuyo."],
+ ["Una nube y punto","No fuiste ni santa ni diablo: fuiste nube, que ya es mucho. Llovías cuando hacía falta y, a veces, cuando no. Yo me voy deshaciendo poco a poco, como todas; el cielo del valle es tuyo."]];
+function hNext(){const h=stH(),c=curCap();
+  for(let k=1;k<=5;k++){if(k<c){h.seen["s"+k]=1;if(!h.seen["f"+k])return"f"+k}else if(k===c&&!h.seen["s"+k])return"s"+k}
+  return c>5&&!h.seen.epi?"epi":null}
+function hShow(key){const h=stH();hCard=key;let eye,tt,stat="";
+  if(key==="epi"){const k=save.karma,e=EPI[k>=15?0:k<=-15?1:2];eye="Epílogo";tt=e;
+    stat="Peticiones cumplidas: "+h.ok+" · Trastadas: "+h.bad+" · Logros: "+ACH.filter(a=>save.ach[a[0]]).length+"/"+ACH.length}
+  else{const c=+key.slice(1);eye=key[0]==="s"?"Capítulo "+c+" · "+CAPS[c]:"Capítulo "+c+" completado";tt=HIST[key]}
+  $("histEye").textContent=eye;$("histTitle").textContent=tt[0];$("histTxt").textContent=tt[1];$("histStat").textContent=stat;$("histStat").hidden=!stat;
+  $("btnHist").textContent=key==="f5"?"Escuchar":"Seguir";
+  const pn=$("histPanel");pn.hidden=false;paused=true;pointerDown=false;sCard();setTimeout(()=>{try{$("btnHist").focus({preventScroll:true})}catch(e){}},60)}
+$("btnHist").onclick=()=>{const h=stH();if(hCard){h.seen[hCard]=1;if(hCard==="epi")unlock("h_epilogo");persist()}
+  const n=hNext();if(n)hShow(n);else{hCard=null;$("histPanel").hidden=true;paused=false}};
+$("vig").after($("hiCv"));$("tl").appendChild($("petBox"));
+
+function historiaUpdate(dt,z,Rd,A,C){
+  if(save!==hSave){hSave=save;petQ=[];petCd=40;hRay=ct("ray");hStart=0;petSig="";stH()}
+  const N=window.__nube;if(N&&!N.hist)N.hist={get petQ(){return petQ},PET,petSpawn,petEnd,stH,MIS_WHERE,get card(){return hCard},get mis(){return hMis},next:()=>$("btnHist").click(),get cd(){return petCd},set cd(v){petCd=v}};
+  if(!started)return;
+  hStart+=dt;
+  // tarjetas de la vieja nube, una vez por capítulo
+  hStoryT-=dt;if(hStoryT<=0){hStoryT=.5;if(!hCard&&hStart>2.5){const n=hNext();if(n&&!document.querySelector(".overlay:not([hidden])"))hShow(n)}}
+  // objetivo de la misión actual
+  hMisT-=dt;if(hMisT<=0){hMisT=.25;hMis=hMisCalc()}
+  // peticiones
+  const rays=ct("ray"),newRay=rays>hRay;hRay=rays;
+  const [wx,wy]=windAt(P.x,P.y),rcx=P.x+wx*.3,rcy=P.y+wy*.3;
+  for(let i=petQ.length-1;i>=0;i--){const q=petQ[i],T=q.T;q.t-=dt;
+    const rainOn=P.rain&&dist(rcx,rcy,q.x,q.y)<q.r+Rd*.5,over=dist(P.x,P.y,q.x,q.y)<q.r+Rd*.5;
+    q.wet=T.bad==="rain"&&rainOn?1:0;
+    if(q.wet){q.bt+=dt;if(q.bt>=3){petEnd(q,"bad");continue}}
+    if(T.bad==="ray"&&newRay&&dist(P.x,P.y,q.x,q.y)<q.r+Rd*1.2){petEnd(q,"bad");continue}
+    if(T.mode==="dry"?over&&!P.rain:rainOn)q.p+=dt;
+    const st=T.check?T.check(q):0;
+    if(st===1||(st===0&&T.mode!=="fire"&&q.p>=q.need)){petEnd(q,"ok");continue}
+    if(st===-1){petEnd(q,"gone");continue}
+    if(T.keep&&!T.keep()){petEnd(q,"late");continue}
+    if(q.t<=0)petEnd(q,"fail")}
+  petCd-=dt;if(petCd<=0&&petQ.length<2&&(save.ach.sorbo||save.mis.a1))petSpawn();
+  petUiT-=dt;if(petUiT<=0){petUiT=.25;petPanel()}
+}
+
+// dibujo en una capa propia, encima del mapa y por debajo del HUD: no la oscurece la noche
+const hcv=$("hiCv"),hg=hcv.getContext("2d");let HC=null,hDirty=1,hRects=[],hRectT=0;
+function hRectsUpd(){const gr=$("game").getBoundingClientRect();hRects=[];
+  for(const id of ["tl","tr","bl","br","joy","hint","toasts"]){const e=$(id);if(!e||e.hidden)continue;const r=e.getBoundingClientRect();if(r.width<2||r.height<2)continue;
+    hRects.push([r.left-gr.left-18,r.top-gr.top-18,r.right-gr.left+18,r.bottom-gr.top+18])}}
+// punto del borde de la vista en dirección al objetivo; si cae bajo un panel del HUD, se desliza hasta el borde del panel
+function hEdge(sx,sy){const cx=vw/2,cy=vh/2,dx=sx-cx,dy=sy-cy,m=28,inR=(x,y)=>hRects.find(r=>x>r[0]&&x<r[2]&&y>r[1]&&y<r[3]);
+  let s=Math.min((vw/2-m)/Math.max(1,Math.abs(dx)),(vh/2-m)/Math.max(1,Math.abs(dy))),x=cx+dx*s,y=cy+dy*s;const r=inR(x,y);
+  if(r){let best=null,bd=1e9;for(const p of [[x,r[3]+2],[r[2]+2,y],[x,r[1]-2],[r[0]-2,y]]){if(p[0]<m||p[0]>vw-m||p[1]<m||p[1]>vh-m||inR(p[0],p[1]))continue;const d=Math.abs(p[0]-x)+Math.abs(p[1]-y);if(d<bd){bd=d;best=p}}
+    if(best){x=best[0];y=best[1]}else for(let k=0;k<50&&inR(x,y);k++){s*=.95;x=cx+dx*s;y=cy+dy*s}}
+  return[x,y,Math.atan2(sy-y,sx-x)]}
+function hIcon(g,ic,x,y,s){g.save();g.translate(x,y);g.lineCap="round";
+  if(ic==="rain"||ic==="dry"){g.fillStyle=ic==="rain"?HC.water:HC.dim;g.beginPath();g.moveTo(0,-s);g.bezierCurveTo(s*.8,-s*.1,s*.75,s*.8,0,s*.8);g.bezierCurveTo(-s*.75,s*.8,-s*.8,-s*.1,0,-s);g.fill();
+    if(ic==="dry"){g.strokeStyle=HC.rust;g.lineWidth=s*.28;g.beginPath();g.moveTo(-s*.8,-s*.75);g.lineTo(s*.8,s*.85);g.stroke()}}
+  else if(ic==="sun"){g.fillStyle=HC.amber;g.beginPath();g.arc(0,0,s*.42,0,TAU);g.fill();g.strokeStyle=HC.amber;g.lineWidth=s*.17;g.beginPath();
+    for(let i=0;i<8;i++){const a=i*TAU/8;g.moveTo(Math.cos(a)*s*.64,Math.sin(a)*s*.64);g.lineTo(Math.cos(a)*s*.92,Math.sin(a)*s*.92)}g.stroke()}
+  else if(ic==="fire"){g.fillStyle=HC.rust;g.beginPath();g.moveTo(0,-s);g.quadraticCurveTo(s*.95,0,s*.55,s*.65);g.quadraticCurveTo(0,s,-s*.55,s*.65);g.quadraticCurveTo(-s*.95,0,0,-s);g.fill();
+    g.fillStyle=HC.amber;g.beginPath();g.moveTo(0,-s*.2);g.quadraticCurveTo(s*.45,s*.3,s*.28,s*.6);g.quadraticCurveTo(0,s*.75,-s*.28,s*.6);g.quadraticCurveTo(-s*.45,s*.3,0,-s*.2);g.fill()}
+  else if(ic==="snow"){g.strokeStyle=HC.water;g.lineWidth=s*.2;g.beginPath();for(let i=0;i<3;i++){const a=i*Math.PI/3+Math.PI/2;g.moveTo(Math.cos(a)*s*.9,Math.sin(a)*s*.9);g.lineTo(-Math.cos(a)*s*.9,-Math.sin(a)*s*.9)}g.stroke()}
+  g.restore()}
+function hChev(g,x,y,a,s,col){g.save();g.translate(x,y);g.rotate(a);g.beginPath();g.moveTo(s,0);g.lineTo(-s*.75,s*.8);g.lineTo(-s*.3,0);g.lineTo(-s*.75,-s*.8);g.closePath();
+  g.lineJoin="round";g.lineWidth=3;g.strokeStyle=HC.ink;g.stroke();g.fillStyle=col;g.fill();g.restore()}
+function hText(g,t,x,y,col){g.font="700 12px 'Alegreya Sans',sans-serif";g.textAlign="center";g.textBaseline="middle";g.lineJoin="round";g.lineWidth=3.5;g.strokeStyle=HC.ink;g.strokeText(t,x,y);g.fillStyle=col||HC.paper;g.fillText(t,x,y)}
+function historiaDraw(){
+  const w2=Math.round(vw*dpr),h2=Math.round(vh*dpr),g=hg;if(hcv.width!==w2||hcv.height!==h2){hcv.width=w2;hcv.height=h2;hDirty=1}
+  if(hDirty){g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,w2,h2);hDirty=0}
+  if(!started||hCard||(!petQ.length&&!hMis))return;
+  if(!HC){const cs=getComputedStyle(document.documentElement),v=(n,d)=>cs.getPropertyValue(n).trim()||d;
+    HC={ink:v("--ink","#0d181c"),paper:v("--paper","#e7dcc2"),dim:v("--paper-dim","#9aa79f"),amber:v("--amber","#e2a94b"),water:v("--water","#5fb0c0"),rust:v("--rust","#b5583f"),line:v("--line","#2f474d")}}
+  hDirty=1;g.setTransform(dpr,0,0,dpr,0,0);
+  hRectT--;if(hRectT<=0){hRectT=30;hRectsUpd()}
+  const zz=zoom*(1+.035*Math.sin(FEEL.punch*Math.PI)),x0=cam.x-vw/2/zz+FEEL.ox/zz,y0=cam.y-vh/2/zz+FEEL.oy/zz;
+  const toS=(x,y)=>[(x-x0)*zz,(y-y0)*zz],inV=(x,y,m)=>x>-m&&x<vw+m&&y>-m&&y<vh+m,Rd=rad();
+  // misión: anillo que palpita o flecha en el borde
+  if(hMis&&dist(P.x,P.y,hMis[0],hMis[1])>Math.max(hMis[2]||0,Rd*.9)){const [sx,sy]=toS(hMis[0],hMis[1]),pu=.5+.5*Math.sin(time*4);
+    if(inV(sx,sy,-12)){g.globalAlpha=.4+.4*pu;g.strokeStyle=HC.amber;g.lineWidth=2.5;g.beginPath();g.arc(sx,sy,13+7*pu,0,TAU);g.stroke();
+      g.globalAlpha=.95;hChev(g,sx,sy-34-5*pu,Math.PI/2,9,HC.amber)}
+    else{const e=hEdge(sx,sy);g.globalAlpha=.7+.25*pu;hChev(g,e[0],e[1],e[2],12,HC.amber)}
+    g.globalAlpha=1}
+  // peticiones: bocadillo sobre quien pide, o aviso en el borde
+  for(const q of petQ){const [sx,sy]=toS(q.x,q.y),fr=q.fr!==undefined?q.fr:Math.min(1,q.p/q.need),late=q.t<15;
+    if(inV(sx,sy,-10)){
+      g.save();g.globalAlpha=.55;g.strokeStyle=q.wet?HC.rust:HC.paper;g.lineWidth=1.5;g.setLineDash([7,7]);g.lineDashOffset=-time*14;g.beginPath();g.arc(sx,sy,Math.max(16,q.r*zz),0,TAU);g.stroke();g.restore();
+      // el bocadillo cuelga del borde de la zona, arriba a la derecha, para no taparlo la propia nube
+      const R=Math.max(16,q.r*zz),ax=sx+R*.82,ay=sy-R*.57,bx=ax+20,by=ay-24-3*Math.sin(time*3);
+      g.globalAlpha=.95;g.fillStyle=HC.paper;g.beginPath();g.moveTo(bx-12,by+5);g.lineTo(ax,ay);g.lineTo(bx-4,by+13);g.fill();g.beginPath();g.arc(bx,by,16,0,TAU);g.fill();g.globalAlpha=1;
+      hIcon(g,q.T.ic,bx,by,9);
+      g.lineCap="round";g.lineWidth=3.5;g.strokeStyle=HC.ink;g.globalAlpha=.7;g.beginPath();g.arc(bx,by,20.5,0,TAU);g.stroke();g.globalAlpha=1;
+      if(fr>0){g.strokeStyle=HC.water;g.beginPath();g.arc(bx,by,20.5,-Math.PI/2,-Math.PI/2+fr*TAU);g.stroke()}
+      if(q.bt>0){g.strokeStyle=HC.rust;g.beginPath();g.arc(bx,by,20.5,-Math.PI/2,-Math.PI/2-Math.min(1,q.bt/3)*TAU,true);g.stroke()}
+      hText(g,q.T.who+" · "+Math.ceil(q.t)+" s",clamp(bx,70,vw-70),by-32,late?HC.amber:HC.paper)}
+    else{const e=hEdge(sx,sy),ex=e[0],ey=e[1],a=e[2];
+      hChev(g,ex+Math.cos(a)*17,ey+Math.sin(a)*17,a,7,late?HC.amber:HC.paper);
+      g.globalAlpha=.92;g.fillStyle=HC.ink;g.beginPath();g.arc(ex,ey,14,0,TAU);g.fill();g.globalAlpha=1;g.strokeStyle=late?HC.amber:HC.paper;g.lineWidth=1.5;g.stroke();
+      hIcon(g,q.T.ic,ex,ey,8);
+      if(fr>0){g.strokeStyle=HC.water;g.lineWidth=2.5;g.beginPath();g.arc(ex,ey,14,-Math.PI/2,-Math.PI/2+fr*TAU);g.stroke()}}}
+}
+
+document.addEventListener("keydown",e=>{if(!hCard||(e.key!=="Enter"&&e.key!==" "&&e.key!=="Escape"))return;e.preventDefault();e.stopPropagation();if(!e.repeat)$("btnHist").click()},true);
+
 /* ---------- Viento y cielo ---------- */
 function windGlobal(){const th=.5+1.3*Math.sin(time/97)+.8*Math.sin(time/41+1);
   let s=Math.max(6,42+26*Math.sin(time/53+2)+16*Math.sin(time/17))*(1+1.5*gale)*SEA.wind[season];
@@ -1205,6 +1511,7 @@ function update(dt){
   if(rainbow){rainbow.t-=dt;if(rainbow.t<=0)rainbow=null}
   for(const f of floats){f.t-=dt;f.y-=dt*(f.vap?40:22)}floats=floats.filter(f=>f.t>0);
   P.w=clamp(P.w,0,C);saveT+=dt;if(saveT>8&&started){saveT=0;persist()}
+  historiaUpdate(dt,z,Rd,A,C);
   // cámara: se aleja un poco cuando la nube es grande
   zoom+=(zbase*lerp(1.35,.65,cfg.cam)*clamp(156/(Rd+80),.34,1)-zoom)*Math.min(1,dt*1.2);
   cam.x+=(P.x-cam.x)*Math.min(1,dt*3);cam.y+=(P.y-A*.45-cam.y)*Math.min(1,dt*3);
@@ -1367,6 +1674,7 @@ function draw(dt){
     ctx.fillStyle=tc[2];hex(t.x-t.r*.25,t.y-t.r*.25,t.r*.28,t.rot);ctx.fill();
     if(t.st===1){for(let i=0;i<3;i++){const a=time*7+i*1.7+t.rot,fr=t.r*(.5+.3*Math.sin(a));ctx.fillStyle=i%2?"#e2a94b":"#d5562f";ctx.globalAlpha=.88;
       poly([[t.x-fr*.6+i*5-5,t.y+4],[t.x+i*5-5+Math.sin(a)*4,t.y-fr*1.5],[t.x+fr*.6+i*5-5,t.y+4]]);ctx.fill()}ctx.globalAlpha=1}}
+  historiaDraw();
   // objetivo
   if(dist(P.x,P.y,P.tx,P.ty)>24){ctx.strokeStyle="rgba(231,220,194,.55)";ctx.lineWidth=2;ctx.beginPath();ctx.arc(P.tx,P.ty,9+2*Math.sin(time*4),0,TAU);ctx.stroke()}
   // sombras de nubes
