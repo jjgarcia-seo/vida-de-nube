@@ -171,13 +171,66 @@ h1{font-family:var(--display);font-weight:800;font-size:clamp(34px,7vw,52px);lin
   border-bottom:1px solid var(--line)}
 .card header h2{font-family:var(--display);font-weight:800;font-size:24px;margin:0}
 .card header button{background:none;border:1px solid var(--line);border-radius:4px;padding:4px 10px;font-size:14px}
-#achList{overflow-y:auto;padding:6px 18px 4px;margin:0;list-style:none}
-#achList li{display:grid;grid-template-columns:22px 1fr;gap:2px 8px;padding:8px 0;border-bottom:1px solid #1b2c31}
-#achList li i{grid-row:1/3;width:14px;height:14px;margin-top:4px;border:1px solid var(--line);transform:rotate(45deg)}
-#achList li.done i{background:var(--amber);border-color:var(--amber)}
-#achList strong{font-family:var(--display);font-size:17px;font-weight:800;color:var(--paper-dim)}
-#achList li.done strong{color:var(--paper)}
-#achList span{font-size:14px;color:var(--paper-dim);line-height:1.3}
+/* Logros: panel por categorías, logros con niveles y avisos compactos (sección "Ritmo de logros") */
+#achCard{max-width:600px}
+#achList{flex:1 1 auto;min-height:0;overflow-y:auto;padding:2px 18px 10px}
+.rl-top{display:grid;grid-template-columns:1fr auto;align-items:baseline;gap:6px 12px;padding:10px 0 12px}
+.rl-top strong{font-family:var(--display);font-size:18px;font-weight:800}
+.rl-top small{color:var(--paper-dim);font-size:13px}
+.rl-bar{grid-column:1/-1;display:block;height:6px;background:var(--ink-2);border:1px solid var(--line);border-radius:3px;overflow:hidden}
+.rl-bar i{display:block;height:100%;background:var(--amber)}
+.rl-cat{border-top:1px solid var(--line)}
+.rl-cat summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:auto 1fr auto;align-items:baseline;gap:6px 10px;padding:11px 0 10px}
+.rl-cat summary::-webkit-details-marker{display:none}
+.rl-cat summary::before{content:"";width:6px;height:6px;border:solid var(--paper-dim);border-width:0 2px 2px 0;transform:rotate(-45deg);transition:transform .2s;align-self:center;margin:0 2px}
+.rl-cat[open]>summary::before{transform:rotate(45deg)}
+.rl-cat summary:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.rl-cn{font-family:var(--display);font-weight:800;font-size:18px}
+.rl-cc{color:var(--paper-dim);font-size:13px;font-variant-numeric:tabular-nums}
+.rl-cat.full .rl-cc{color:var(--amber)}
+.rl-cat summary .rl-bar{height:4px;border:0}
+.rl-ul{list-style:none;margin:0 0 10px;padding:0}
+.rl-ul li{display:grid;grid-template-columns:22px 1fr;gap:2px 8px;padding:8px 0;border-top:1px solid var(--ink-2)}
+.rl-ul li>*{grid-column:2}
+.rl-ul li>i{grid-column:1;grid-row:1/3;width:14px;height:14px;margin-top:4px;border:1px solid var(--line);transform:rotate(45deg)}
+.rl-ul li.done>i{background:var(--amber);border-color:var(--amber)}
+.rl-ul li.sec>i{border-style:dashed;border-color:var(--paper-dim)}
+.rl-ul strong{font-family:var(--display);font-size:17px;font-weight:800;color:var(--paper-dim)}
+.rl-ul li.done strong{color:var(--paper)}
+.rl-ul span{font-size:14px;color:var(--paper-dim);line-height:1.3}
+.rl-ul li.sec span{font-style:italic}
+.rl-ul span b{color:var(--paper);font-weight:700}
+.rl-nu{font-style:normal;font-family:var(--body);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink);
+  background:var(--amber);border-radius:3px;padding:1px 5px;margin-left:8px;vertical-align:3px}
+.rl-sub{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px;align-items:center}
+.rl-sub small{color:var(--paper-dim);font-size:12px;margin-right:2px;font-variant-numeric:tabular-nums}
+.rl-sub b{font-weight:400;font-size:12px;line-height:1.5;color:var(--paper-dim);border:1px solid var(--line);border-radius:10px;padding:0 8px}
+.rl-sub b.on{color:var(--ink);background:var(--water);border-color:var(--water)}
+.rl-med{display:flex;flex-wrap:wrap;gap:4px;margin:3px 0 2px}
+.rl-med b{font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;border:1px solid var(--line);border-radius:3px;padding:1px 6px;color:var(--paper-dim)}
+.rl-med b.on.m0{background:var(--rust);border-color:var(--rust);color:var(--paper)}
+.rl-med b.on.m1{background:var(--paper-dim);border-color:var(--paper-dim);color:var(--ink)}
+.rl-med b.on.m2{background:var(--amber);border-color:var(--amber);color:var(--ink)}
+.rl-med b.on.m3{background:var(--water);border-color:var(--water);color:var(--ink)}
+.rl-pb{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;margin-top:5px}
+.rl-pb .rl-bar{grid-column:auto;height:4px;border:0}
+.rl-pb .rl-bar i{background:var(--water)}
+.rl-pb small{font-size:12px;color:var(--paper-dim);font-variant-numeric:tabular-nums}
+.rl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;margin:0 0 6px}
+.rl-grid div{background:var(--ink-2);border-radius:4px;padding:6px 9px}
+.rl-grid dt{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--paper-dim)}
+.rl-grid dd{margin:0;font-family:var(--display);font-weight:800;font-size:18px;font-variant-numeric:tabular-nums}
+.rl-stats>p{padding:4px 0!important}
+.rl-stats h4{margin:10px 0 2px;font-size:12px;color:var(--paper-dim);font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.rl-mom{margin-bottom:14px}
+#btnAch,#btnPause{position:relative}
+#btnAch.nuevo::after,#btnPause.nuevo::after{content:"";position:absolute;top:-4px;right:-4px;width:10px;height:10px;border-radius:50%;
+  background:var(--amber);box-shadow:0 0 0 2px var(--ink);pointer-events:none}
+.toast.ach{max-width:260px;padding:5px 10px}
+.toast.ach small::before{content:"◆ "}
+.toast.ach strong{font-size:14px}
+.toast.ach span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+@media (max-width:560px){#achList{padding:2px 14px 8px}.rl-grid{grid-template-columns:1fr 1fr}.rl-cn{font-size:17px}.toast.ach span{-webkit-line-clamp:1}}
 .card footer{padding:10px 18px 14px;display:flex;justify-content:space-between;align-items:center;gap:12px;
   font-size:13px;color:var(--paper-dim);border-top:1px solid var(--line)}
 .card footer button{background:none;border:1px solid var(--line);border-radius:4px;padding:4px 10px;font-size:13px;
@@ -454,9 +507,9 @@ h1{font-family:var(--display);font-weight:800;font-size:clamp(34px,7vw,52px);lin
   </div>
 
   <div class="overlay" id="achPanel" hidden>
-    <div class="card">
+    <div class="card" id="achCard">
       <header><h2>Logros <span id="achCount2" style="color:var(--amber)"></span></h2><button id="btnClose" type="button">Cerrar</button></header>
-      <ul id="achList"></ul>
+      <div id="achList"></div>
       <footer><span>Tu progreso se guarda en este dispositivo.</span><button id="btnReset" type="button">Empezar de cero</button></footer>
     </div>
   </div>
@@ -1189,21 +1242,187 @@ if(save.ach.rayo&&!save.ups.rayo)save.ups.rayo=1;if(save.ach.tornado&&!save.ups.
 function persist(){save.m=P.m;save.w=P.w;save.x=P.x;save.y=P.y;save.t=tday;try{localStorage.setItem(KEY,JSON.stringify(save))}catch(e){}}
 const $=id=>document.getElementById(id);
 const TQ=[];let tqNext=0;
-function toast(label,title,text,snd){if(label==="Logro"&&!cfg.notes)return;TQ.push([label,title,text||"",snd]);if(TQ.length>8)TQ.splice(1,1)}
-function toastPump(){const now=performance.now();if(!TQ.length||now<tqNext||paused)return;const [label,title,text,snd]=TQ.shift();
-  const t=document.createElement("div");t.className="toast"+(label==="Aviso"?" warn":"");t.innerHTML="<small></small><strong></strong><span></span>";
+function toast(label,title,text,snd,cls){if(label==="Logro"&&!cfg.notes)return;TQ.push([label,title,text||"",snd,cls]);if(TQ.length>8)TQ.splice(1,1)}
+function toastPump(){const now=performance.now();if(!TQ.length||now<tqNext||paused||(TQ[0][4]==="ach"&&rlBusy()))return;const [label,title,text,snd,cls]=TQ.shift();
+  const t=document.createElement("div");t.className="toast"+(label==="Aviso"?" warn":"")+(cls?" "+cls:"");t.innerHTML="<small></small><strong></strong><span></span>";
   t.children[0].textContent=label;t.children[1].textContent=title;t.children[2].textContent=text;if(!text)t.children[2].remove();
-  const box=$("toasts");while(box.children.length>=1)box.firstChild.remove();box.appendChild(t);setTimeout(()=>t.remove(),label==="Aviso"?4600:3400);
-  if(snd)snd();tqNext=now+(label==="Logro"?3200:2200)}
-function unlock(id){if(save.ach[id])return;save.ach[id]=1;const a=ACH.find(a=>a[0]===id);toast("Logro",a[1],a[2],chime);persist();gain(6);refreshAch()}
-function refreshAch(){const n=ACH.filter(a=>save.ach[a[0]]).length;
-  $("achCount").textContent=n+"/"+ACH.length;$("achCount2").textContent=n+"/"+ACH.length;
-  const nx=ACH.find(a=>!save.ach[a[0]]);const h=$("hint");h.textContent="";
-  if(nx){const b=document.createElement("b");b.textContent=nx[1];h.append("Siguiente idea · ",b,document.createElement("br"),nx[2])}
-  else h.textContent="Has vivido una vida de nube completa.";
-  const ul=$("achList");ul.textContent="";
-  for(const a of ACH){const li=document.createElement("li");if(save.ach[a[0]])li.className="done";
-    li.append(document.createElement("i"),Object.assign(document.createElement("strong"),{textContent:a[1]}),Object.assign(document.createElement("span"),{textContent:a[2]}));ul.appendChild(li)}}
+  const box=$("toasts");while(box.children.length>=1)box.firstChild.remove();box.appendChild(t);setTimeout(()=>t.remove(),label==="Aviso"?4600:cls==="ach"?4200:3400);
+  if(snd)snd();tqNext=now+(cls==="ach"?3600:label==="Logro"?3200:2200)}
+function unlock(id){if(save.ach[id])return;save.ach[id]=1;rlGot(id)}
+function refreshAch(){const n=achN();
+  $("achCount").textContent=n+"/"+ACH.length;$("achCount2").textContent=n+"/"+ACH.length;rlBadge();
+  if(!$("achPanel").hidden)rlRender()}
+
+/* ---------- Ritmo de logros ---------- */
+// Pocos logros, pero que se noten. ACH queda como la lista de logros de verdad (cada nivel de un
+// logro con niveles cuenta como uno). Lo que pasaba solo o casi sin querer sigue marcándose en
+// save.ach (así no se rompen partidas, misiones ni consejos) pero ya no es logro ni avisa: sale en
+// el cuaderno del panel como "pequeño momento" o como paso de un logro compuesto.
+// Avisos: se juntan y salen como mucho uno cada RL_GAP s de juego, nunca con un panel, una
+// tarjeta de historia o la pausa delante. Estado propio en save.rl (stR): logros aún sin ver.
+const RL_GAP=50;
+const RL_CATS=[["pasos","Primeros pasos"],["lluvia","Lluvia y vecinos"],["tormenta","Tormentas y rivales"],["viajes","Viajes y secretos"],
+  ["formas","Formas y habilidades"],["estaciones","Estaciones y jefas"],["maestria","Maestría"],["otros","Más aventuras"]];
+const RL_TIER=["bronce","plata","oro","platino"];
+// logros sueltos de cada categoría; "?" delante = secreto: se ve "???" y una pista hasta conseguirlo
+const RL_LIST={pasos:["sorbo","gotas","grande","riego","rayo","pezgrande","tornado"],
+  lluvia:["c_mojar","c_parte","c_finde","presa","sombra","vendimia","h_sombra","h_brigada","h_muneco","h_dos","h_pelos","h_todos","h_trav10","buena","negra"],
+  tormenta:["duelo","rebrote","malanube","torera","?doble","?campanario","?apagon","?voladora"],
+  viajes:["explorador","c_monte","formacion","?isla","rescate","?valle","?almendros","?fuegos","?boda","?verbena","h_epilogo"],
+  formas:["nubario","f_estrato","f_cirro","f_lenticular","f_nimbo","zeus","f_niebla","m_granizo","m_pedrisco","m_sopa","m_rastro","m_ninos","m_derrape"],
+  estaciones:["c_anio","jefa0","jefa1","jefa2","jefa3","jefas","?m_engulle"],
+  maestria:["cap5"]};
+const RL_HINT={doble:"Dicen que un rayo nunca cae dos veces en el mismo sitio. ¿Seguro?",
+  campanario:"La torre más alta del pueblo llama a las tormentas.",
+  apagon:"En la ciudad hay un edificio lleno de cables que no soporta los rayos.",
+  voladora:"Un tornado, un prado y unas cuantas vacas despistadas…",
+  isla:"Dicen que mar adentro, entre la niebla, hay algo.",
+  valle:"Tras las montañas del norte hay niebla, y tras la niebla… Busca un paso.",
+  almendros:"Hay árboles que esperan tu lluvia en un sitio que casi nadie conoce.",
+  fuegos:"Las noches de feria, alguien espera una chispa del cielo.",
+  boda:"Dicen que mojar a una novia trae suerte. Solo un poquito.",
+  verbena:"Las noches de verano el pueblo baila hasta tarde… hasta que llega alguien.",
+  m_engulle:"Cuando una jefa está muy débil, quizá no haga falta otro rayo."};
+// logros con niveles (una sola línea en el panel): [clave, nombre, categoría, valor, unidad, [[id, umbral]…], divisor]
+const RL_GR=[
+  ["moja","Lluvia sobre la gente","lluvia","wetP","personas mojadas",[["aguafiestas",15],["moja50",50],["moja150",150]]],
+  ["campos","Regadío","lluvia","fields","campos regados",[["campos10",10],["campos30",30],["campos60",60]]],
+  ["cosecha","Despensa","lluvia","harv","cosechas tuyas",[["cosecha20",20],["cosecha50",50],["cosecha100",100]]],
+  ["vecina","La nube del barrio","lluvia","hok","peticiones cumplidas",[["h_vecina",1],["h_pet10",10],["h_pet30",30]]],
+  ["guarda","Brigada forestal","tormenta","ext","árboles salvados",[["guarda",20],["guarda100",100],["guarda300",300]]],
+  ["truenos","Truenos","tormenta","ray","rayos",[["rayo25",25],["rayo100",100],["rayo300",300]]],
+  ["rivE","Reina del cielo","tormenta","rivE","rivales absorbidas",[["rivE5",5],["rivE20",20],["rivE50",50]]],
+  ["rivK","Cazanubes","tormenta","rivK","rivales deshechas",[["rivK5",5],["rivK15",15],["rivK40",40]]],
+  ["planes","Espacio aéreo","tormenta","planes","avionetas ahuyentadas",[["planes3",3],["planes10",10],["planes25",25]]],
+  ["km","Viajera","viajes","dist","km",[["km500",500000],["km1000",1000000],["km2000",2000000]],1000],
+  ["oro","Tesoro del cielo","viajes","oro","gotas doradas",[["oro5",5],["oro12",12],["oro20",20]]],
+  ["dias","Calendario","estaciones","day","días",[["estaciones",8],["dias20",20],["dias50",50]]],
+  ["tam","Crecer sin parar","maestria","m","de tamaño máximo",[["gigante",12],["super",25],["tam40",40],["tam60",60]]],
+  ["lvl","Oficio de nube","maestria","lvl","de nivel",[["nivel15",15],["nivel20",20],["nivel30",30]]],
+  ["eat","Glotonería","maestria","eat","nubes comidas",[["come200",200],["come500",500],["come1000",1000]]],
+  ["vapor","Destilería","maestria","motes","motas de vapor",[["vapor2000",2000],["vapor5000",5000],["vapor10000",10000]]]];
+// niveles nuevos (los demás ids ya existían)
+const RL_NEW={campos60:["Huerta del valle","Riega 60 campos hasta que maduren."],cosecha50:["Graneros a rebosar","Que el granjero recoja 50 cosechas regadas por ti."],cosecha100:["Pan para todo el valle","Que el granjero recoja 100 cosechas regadas por ti."],
+  guarda300:["Pulmón del valle","Salva 300 árboles de las llamas."],rayo300:["Dueña del trueno","Lanza 300 rayos."],
+  rivE50:["Emperatriz de las nubes","Absorbe a 50 nubes rivales."],rivK15:["Rayo justiciero","Deshaz a 15 nubes rivales a rayos."],rivK40:["Terror de las rivales","Deshaz a 40 nubes rivales a rayos."],
+  planes10:["Torre de control","Ahuyenta a 10 avionetas siembranubes."],planes25:["Cielo libre","Ahuyenta a 25 avionetas siembranubes."],
+  km500:["Nómada del cielo","Recorre 500 km."],km1000:["Vuelta al mundo","Recorre 1.000 km."],km2000:["Nube sin fronteras","Recorre 2.000 km."],oro5:["Buscadora de brillos","Encuentra 5 gotas doradas."],
+  oro12:["Urraca del cielo","Encuentra 12 gotas doradas."],dias50:["Nube de toda la vida","Vive 50 días."],nivel30:["Leyenda viva","Alcanza el nivel 30."],
+  come500:["Hambre de cielo","Come 500 nubes."],come1000:["Ni una nube a salvo","Come 1.000 nubes."],vapor5000:["Central de vapor","Recoge 5.000 motas de vapor."],vapor10000:["Mar de vapor","Recoge 10.000 motas de vapor."]};
+// logros que se ganan juntando varias cosas (las de dentro ya no son logros sueltos)
+const RL_COMP={
+  c_mojar:["Nadie se libra","Moja a una persona, a un perro, a una vaca, a los niños del recreo, a un velero y a una bandada en pleno vuelo.",
+    [["paraguas","una persona"],["perro","un perro"],["vaca","una vaca"],["recreo","el recreo"],["marinero","un velero"],["desbandada","una bandada"]]],
+  c_parte:["Parte meteorológico","Llueve un buen rato sobre el pueblo, el bosque, la ciudad, el puerto y el agua.",
+    [["pueblo","el pueblo"],["bosque","el bosque"],["ciudad","la ciudad"],["puerto","el puerto"],["mojado","lago, río o mar"]]],
+  c_finde:["Domingo pasado por agua","Llueve sobre el parque y el estadio de la ciudad y apaga la hoguera del camping.",
+    [["parque","el parque"],["partido","el estadio"],["camping","el camping"]]],
+  c_monte:["Alta montaña","Nieva en las cumbres, quédate quieta sobre el pico más alto, moja a las ovejas y llévate un gorro de nube.",
+    [["nevada","nevada"],["cumbre","la cima"],["oveja","las ovejas"],["gorro","un gorro"]]],
+  c_anio:["Un año de nube","Deja huella en cada estación: lluvia en primavera, fuegos apagados en verano, vendavales en otoño y nieve en invierno.",
+    [["primavera","primavera: 60 s de lluvia"],["verano","verano: 10 árboles apagados"],["otono","otoño: 2 km de vendaval"],["invierno","invierno: el pueblo nevado"]]]};
+// pasos que se muestran bajo un logro que se gana por su cuenta
+const RL_STEPS={rescate:[["isla","llegar hasta él"],["aguadulce","llenar su barril"],["senal","encender su hoguera"]]};
+// marcas que ya no son logros: pasan solas o casi sin querer. Salen en el cuaderno como pequeños momentos.
+const RL_MOM=["nace","union","seca","arcoiris","amanecer","viento","contra","surf","termica","chimenea","cuervos","tormenta","arbol","bombero","incendio",
+  "nocturna","avion","evaporada","querida","temida","noctambula","racha","canon","espanta","antiaerea","lugares","oro1","aguadulce","senal",
+  "sinevap","alborde","huida","esquiva","sinrasguno","aplicada","constante","h_trav","cap1","cap2","cap3","cap4","nivel5","nivel10","come10","come50","vapor100","vapor500","km50","km200","cosecha","dias3"];
+const RL={q:[],cd:0,wait:0,t0:null,log:[],ignoreUI:false,meta:{},orig:{},open:{},oroEl:null};
+function stR(){if(!save.rl)save.rl={nu:{},maxM:1};return save.rl}
+function achN(){let n=0;for(const a of ACH)if(save.ach[a[0]])n++;return n}
+function rlVal(g){const k=g[3],h=save.hist||{};
+  return k==="hok"?h.ok||0:k==="oro"?Object.keys((save.mundo&&save.mundo.oro)||{}).length:k==="m"?Math.max(P.m,stR().maxM||1):tv(k)}
+const rlBusy=()=>!RL.ignoreUI&&(paused||!!document.querySelector("#game .overlay:not([hidden])"));
+const rlSoft=()=>{blip(7);blip(12)};
+// experiencia: antes 6 por cada logro; ahora 5 por cada marca pequeña y más por lo que cuesta (el total casi no cambia)
+function rlXp(id){const M=RL.meta[id]||{};return M.g?[12,20,35,55][M.ti]||55:M.sec?20:RL_COMP[id]?15:12}
+function rlGot(id){const real=ACH.some(a=>a[0]===id);
+  if(real){stR().nu[id]=1;gain(rlXp(id));if(!RL.q.length)RL.wait=0;RL.q.push(id)}else gain(5);
+  for(const k in RL_COMP){const s=RL_COMP[k][2];if(!save.ach[k]&&s.some(x=>x[0]===id)&&s.every(x=>save.ach[x[0]]))unlock(k)}
+  persist();refreshAch()}
+// se llama desde checkProg (cada medio segundo de juego, nunca en pausa)
+function rlTick(){const st=stR();if(P.m>st.maxM)st.maxM=P.m;
+  for(const g of RL_GR){const v=rlVal(g);for(const t of g[5])if(!save.ach[t[0]]&&v>=t[1])unlock(t[0])}
+  const dt=RL.t0===null?0:clamp(time-RL.t0,0,2);RL.t0=time;RL.cd-=dt;if(!RL.q.length)return;RL.wait+=dt;
+  // una subida de plata u oro sola no merece aviso propio enseguida: espera a ir con otro logro (o 2 minutos)
+  const solo=RL.q.every(id=>(RL.meta[id]||{}).ti>0);
+  if(RL.cd<=0&&RL.wait>=(solo?120:1.5)&&!rlBusy())rlShow()}
+function rlShow(){const ids=RL.q.splice(0),list=ids.map(id=>ACH.find(a=>a[0]===id)).filter(Boolean);RL.cd=RL_GAP;RL.wait=0;
+  if(!list.length)return;RL.log.push([Math.round(time),list.length]);
+  if(cfg.notes){if(list.length===1){const a=list[0],M=RL.meta[a[0]]||{};
+      if(M.g)toast(M.ti?"Sube a "+RL_TIER[M.ti]:"Logro · "+RL_TIER[0],M.g[1],a[1]+": "+a[2],M.ti?rlSoft:chime,"ach");
+      else toast(M.sec?"Logro secreto":"Logro",a[1],a[2],chime,"ach")}
+    else{const nm=list.map(a=>{const M=RL.meta[a[0]]||{};return M.g?M.g[1]+" ("+RL_TIER[M.ti]+")":a[1]});
+      toast(list.length+" logros nuevos",nm.length>3?nm.slice(0,3).join(", ")+" y "+(nm.length-3)+" más":nm.slice(0,-1).join(", ")+" y "+nm[nm.length-1],"Míralos en Logros.",chime,"ach")}}
+  rlBadge()}
+function rlBadge(){const nu=stR().nu,on=Object.keys(nu).some(k=>!RL.q.includes(k));
+  for(const id of ["btnAch","btnPause"]){const b=$(id);if(b)b.classList.toggle("nuevo",on)}}
+function rlEl(tag,cls,txt){const e=document.createElement(tag);if(cls)e.className=cls;if(txt!==undefined)e.textContent=txt;return e}
+function rlBar(f){const b=rlEl("span","rl-bar"),i=rlEl("i");i.style.width=Math.round(clamp(f,0,1)*100)+"%";b.appendChild(i);return b}
+const rlFmt=n=>Math.floor(n).toLocaleString("es-ES");
+function rlLi(id){const a=ACH.find(x=>x[0]===id),M=RL.meta[id]||{},ok=!!save.ach[id],hid=M.sec&&!ok,li=rlEl("li",(ok?"done":"")+(hid?" sec":"")+(stR().nu[id]?" new":""));
+  const s=rlEl("strong",null,hid?"???":a[1]);if(stR().nu[id])s.appendChild(rlEl("em","rl-nu","nuevo"));
+  li.append(rlEl("i"),s,rlEl("span",null,hid?"Pista: "+(RL_HINT[id]||"sigue explorando."):a[2]));
+  const sub=RL_COMP[id]?RL_COMP[id][2]:RL_STEPS[id];
+  if(sub&&!ok){const d=rlEl("div","rl-sub");let n=0;for(const x of sub){const on=!!save.ach[x[0]];n+=on;d.appendChild(rlEl("b",on?"on":"",x[1]))}
+    d.prepend(rlEl("small",null,n+"/"+sub.length));li.appendChild(d)}
+  return li}
+function rlTierLi(g){const v=rlVal(g),dv=g[6]||1,T=g[5],k=T.filter(t=>save.ach[t[0]]).length,nx=T.find(t=>!save.ach[t[0]]),last=T[k-1];
+  const nu=T.some(t=>stR().nu[t[0]]),li=rlEl("li","tier"+(k?" done":"")+(nu?" new":""));
+  const s=rlEl("strong",null,g[1]);if(nu)s.appendChild(rlEl("em","rl-nu","nuevo"));
+  const md=rlEl("div","rl-med");T.forEach((t,i)=>md.appendChild(rlEl("b","m"+i+(save.ach[t[0]]?" on":""),RL_TIER[i])));
+  const A=id=>ACH.find(a=>a[0]===id)||[id,id,""];
+  const sp=rlEl("span");if(last)sp.appendChild(rlEl("b",null,A(last[0])[1]+". "));sp.append(nx?"Siguiente: "+A(nx[0])[2]:"¡Todos los niveles!");
+  li.append(rlEl("i"),s,md,sp);
+  if(nx){const p=rlEl("div","rl-pb");p.append(rlBar(v/nx[1]),rlEl("small",null,rlFmt(Math.min(v,nx[1])/dv)+" / "+rlFmt(nx[1]/dv)+" "+g[4]));li.appendChild(p)}
+  return li}
+function rlStats(){const d=rlEl("details","rl-cat rl-stats");d.open=!!RL.open.stats;d.addEventListener("toggle",()=>{RL.open.stats=d.open});
+  const sm=rlEl("summary");sm.append(rlEl("span","rl-cn","Cuaderno de nube"),rlEl("span","rl-cc","estadísticas"));d.appendChild(sm);
+  const j=save.jug||{},h=save.hist||{},pt=Math.floor((j.playT||0)/60);
+  const S=[["Días vividos",save.day],["Tiempo flotando",pt>=60?Math.floor(pt/60)+" h "+pt%60+" min":pt+" min"],["Distancia",rlFmt(ct("dist")/1000)+" km"],
+    ["Tamaño máximo",stR().maxM||P.m],["Nubes comidas",ct("eat")],["Motas de vapor",save.motes],["Minutos de lluvia",rlFmt(ct("rain")/60)],
+    ["Personas mojadas",save.wetP],["Campos regados",ct("fields")],["Cosechas tuyas",save.harv],["Árboles salvados",save.ext],["Árboles quemados",save.burnt],
+    ["Rayos",ct("ray")],["Rivales absorbidas",ct("rivE")],["Rivales deshechas",ct("rivK")],["Avionetas ahuyentadas",ct("planes")],
+    ["Avionetas esquivadas",j.dodge||0],["Evaporaciones",j.ev||0],["Peticiones cumplidas",h.ok||0],["Travesuras",h.bad||0],["Gotas doradas",rlVal(RL_GR.find(g=>g[0]==="oro"))]];
+  const dl=rlEl("dl","rl-grid");for(const [k,v] of S){const w=rlEl("div");w.append(rlEl("dt",null,k),rlEl("dd",null,typeof v==="number"?rlFmt(v):v));dl.appendChild(w)}
+  d.appendChild(dl);if(RL.oroEl)d.appendChild(RL.oroEl);
+  const mo=RL_MOM.filter(k=>RL.orig[k]),n=mo.filter(k=>save.ach[k]).length;
+  d.appendChild(rlEl("h4",null,"Pequeños momentos · "+n+"/"+mo.length));
+  const ch=rlEl("div","rl-sub rl-mom");for(const k of mo)if(save.ach[k]){const b=rlEl("b","on",RL.orig[k][1]);b.title=RL.orig[k][2];ch.appendChild(b)}
+  if(n<mo.length)ch.appendChild(rlEl("b",null,"+"+(mo.length-n)+" por descubrir"));
+  d.appendChild(ch);return d}
+function rlRender(){const box=$("achList");if(!box)return;const st=stR(),sc=box.scrollTop;box.textContent="";
+  const n=achN(),tot=ACH.length,sec=ACH.filter(a=>(RL.meta[a[0]]||{}).sec),top=rlEl("div","rl-top");
+  top.append(rlEl("strong",null,n+" de "+tot+" logros"),rlEl("small",null,"Secretos: "+sec.filter(a=>save.ach[a[0]]).length+"/"+sec.length),rlBar(n/tot));
+  box.appendChild(top);let first=true;
+  for(const [c,name] of RL_CATS){const ids=ACH.filter(a=>((RL.meta[a[0]]||{}).cat||"otros")===c).map(a=>a[0]);if(!ids.length)continue;
+    const dn=ids.filter(id=>save.ach[id]).length,d=rlEl("details","rl-cat"+(dn===ids.length?" full":""));
+    const op=RL.open[c]!==undefined?RL.open[c]:ids.some(id=>st.nu[id])||(first&&dn<ids.length);if(dn<ids.length)first=false;
+    d.open=op;d.addEventListener("toggle",()=>{RL.open[c]=d.open});
+    const sm=rlEl("summary");sm.append(rlEl("span","rl-cn",name),rlEl("span","rl-cc",dn+"/"+ids.length),rlBar(dn/ids.length));d.appendChild(sm);
+    const ul=rlEl("ul","rl-ul"),gs=new Set();
+    for(const id of ids){const g=(RL.meta[id]||{}).g;if(g){if(!gs.has(g)){gs.add(g);ul.appendChild(rlTierLi(g))}}else ul.appendChild(rlLi(id))}
+    d.appendChild(ul);box.appendChild(d)}
+  box.appendChild(rlStats());box.scrollTop=sc}
+// cuando todo el script ha cargado (y los módulos han añadido sus logros) se ordena la lista
+queueMicrotask(()=>{for(const a of ACH)RL.orig[a[0]]=a;
+  const out=[],used=new Set(),skip=new Set(RL_MOM);
+  for(const k in RL_COMP)for(const x of RL_COMP[k][2])skip.add(x[0]);
+  const add=(id,cat,m)=>{if(used.has(id))return;const o=RL.orig[id]||(RL_NEW[id]&&[id].concat(RL_NEW[id]))||(RL_COMP[id]&&[id,RL_COMP[id][0],RL_COMP[id][1]]);if(!o)return;
+    used.add(id);out.push([id,o[1],o[2]]);RL.meta[id]=Object.assign({cat},m)};
+  for(const [c] of RL_CATS){for(const s of RL_LIST[c]||[])add(s.replace("?",""),c,{sec:s[0]==="?"});
+    for(const g of RL_GR)if(g[2]===c)g[5].forEach((t,i)=>add(t[0],c,{g,ti:i}))}
+  for(const a of ACH)if(!skip.has(a[0]))add(a[0],"otros",{}); // logros que añadan otros módulos
+  ACH.length=0;ACH.push(...out);
+  // partidas antiguas: lo que ya cumplía un logro compuesto o un nivel nuevo se marca sin avisar
+  for(const k in RL_COMP)if(!save.ach[k]&&RL_COMP[k][2].every(x=>save.ach[x[0]]))save.ach[k]=1;
+  for(const g of RL_GR){const v=rlVal(g);for(const t of g[5])if(!save.ach[t[0]]&&v>=t[1])save.ach[t[0]]=1}
+  const ul=$("achList"),pr=ul&&ul.previousElementSibling;if(pr&&pr.tagName==="P")RL.oroEl=pr; // "Gotas doradas" del módulo de lugares
+  const pn=$("achPanel");new MutationObserver(()=>{if(!pn.hidden){RL.q.length=0;for(let i=TQ.length-1;i>=0;i--)if(TQ[i][4]==="ach")TQ.splice(i,1);
+      for(const t of document.querySelectorAll("#toasts .toast.ach"))t.remove();rlRender()}
+    else{stR().nu={};persist();rlBadge()}}).observe(pn,{attributes:true,attributeFilter:["hidden"]});
+  const N=window.__nube;if(N){N.achN=achN;N.rl=RL}
+  refreshAch()});
 
 /* ---------- Estado ---------- */
 const P={x:save.x,y:save.y,vx:0,vy:0,tx:save.x,ty:save.y,m:save.m,w:save.w,rain:false,streak:0,cool:0,peakT:0,gs:0,contra:0,dash:0,dashCd:0,zeroT:0,steal:0,formCd:0,pf:[]};
@@ -1805,7 +2024,7 @@ const MIS=[
  [5,"e3","Vive las cuatro estaciones",()=>hasA("estaciones"),1],
  [5,"e4","Completa el nubario",()=>nForms(),7],
  [5,"e5","Crece hasta tamaño 25",()=>P.m,25],
- [5,"e6","Consigue logros",()=>Object.keys(save.ach).length,80],
+ [5,"e6","Consigue logros",()=>achN(),30],
  [5,"e7","Conviértete en nube bendita o en nube negra",()=>hasA("buena")+hasA("negra"),1]
 ];
 const curCap=()=>{for(let c=1;c<=5;c++)if(MIS.some(m=>m[0]===c&&!save.mis[m[1]]))return c;return 6};
@@ -1816,7 +2035,7 @@ const TIERS=[["eat",10,"come10"],["eat",50,"come50"],["eat",200,"come200"],["mot
  ["estCity",5,"f_estrato"],["cirroD",10000,"f_cirro"],["lentG",8,"f_lenticular"],["nimboF",3,"f_nimbo"],["niebP",10,"f_niebla"]];
 const tv=k=>k==="motes"?save.motes:k==="wetP"?save.wetP:k==="ext"?save.ext:k==="harv"?save.harv:k==="day"?save.day:k==="lvl"?save.lvl:k==="m"?P.m:ct(k);
 function checkProg(){if(!started)return;
-  for(const t of TIERS)if(!save.ach[t[2]]&&tv(t[0])>=t[1])unlock(t[2]);
+  for(const t of TIERS)if(!save.ach[t[2]]&&tv(t[0])>=t[1])unlock(t[2]);rlTick();
   if(save.karma>=15)unlock("querida");if(save.karma<=-15)unlock("temida");
   const c=curCap();
   if(c<=5)for(const m of MIS)if(m[0]===c&&!save.mis[m[1]]&&m[3]()>=m[4]){save.mis[m[1]]=1;gain(10+5*c,P.x,P.y);toast("Misión cumplida",m[2],"",blip.bind(null,7));
@@ -1826,7 +2045,7 @@ function refreshMis(){const c=curCap(),ul=$("misList");
   const list=c<=5?MIS.filter(m=>m[0]===c&&!save.mis[m[1]]).slice(0,3):[];
   const sig=c+"|"+list.map(m=>m[1]+":"+Math.min(m[3](),m[4])).join(",");if(sig===misSig)return;misSig=sig;
   $("misCap").textContent=c<=5?"Capítulo "+c+" · "+CAPS[c]:"Vida completa";ul.textContent="";
-  if(c>5){const li=document.createElement("li");li.textContent="Te quedan "+(ACH.length-Object.keys(save.ach).length)+" logros por descubrir.";ul.appendChild(li);return}
+  if(c>5){const li=document.createElement("li");li.textContent="Te quedan "+(ACH.length-achN())+" logros por descubrir.";ul.appendChild(li);return}
   for(const m of list){const v=Math.min(m[3](),m[4]),li=document.createElement("li");li.append(m[2]);
     if(m[4]>1){li.append(Object.assign(document.createElement("small"),{textContent:" "+v+"/"+m[4]}));const pb=document.createElement("div");pb.className="pb";const i=document.createElement("i");i.style.width=(v/m[4]*100)+"%";pb.appendChild(i);li.appendChild(pb)}
     ul.appendChild(li)}}

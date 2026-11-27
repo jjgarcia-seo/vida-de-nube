@@ -34,6 +34,8 @@ const MIN = +(process.argv[2] || 25), SEED = +(process.argv[3] || 1), NOVATO = p
     const N = window.__nube;
     // que el bucle real no avance mientras el bot simula (si hay menú de pausa, lo usamos)
     if (N.pause) N.pause(true);
+    // los avisos de logro esperan a que no haya paneles abiertos: aquí el de pausa está siempre delante
+    if (N.rl) N.rl.ignoreUI = true;
     window.__bot = {
       t: 0, think: 0, lv: [], cap: [], ach: [], evap: 0, shrink: 0, sizes: [], lastEvt: 0, gaps: [], longGap: 0,
       bigNear: 0, planes: 0, planeHits: 0, lastPlane: null, prevX: N.P.x, prevY: N.P.y, prevM: N.P.m, prevXp: 0,
@@ -150,9 +152,10 @@ const MIN = +(process.argv[2] || 25), SEED = +(process.argv[3] || 1), NOVATO = p
       B.sizes.push(P.m);
     });
     const snap = await page.evaluate(() => { const N = window.__nube, B = window.__bot; const S = N.save; let x = S.xp; for (let l = 1; l < S.lvl; l++) x += B.NEED[l - 1] || 450 + 60 * (l - 10);
-      return { min: Math.round(B.t / 60), xp: x, lvl: N.save.lvl, m: N.P.m, ach: Object.keys(N.save.ach).length, cap: N.curCap(), w: Math.round(N.P.w) }; });
+      return { min: Math.round(B.t / 60), xp: x, lvl: N.save.lvl, m: N.P.m, ach: N.achN ? N.achN() : Object.keys(N.save.ach).length, cap: N.curCap(), w: Math.round(N.P.w) }; });
     result.push(snap);
   }
+  const avisos = await page.evaluate(() => window.__nube.rl ? window.__nube.rl.log : null);
   const B = await page.evaluate(() => { const B = window.__bot, J = window.__nube.save.jug; B.dodge = J ? J.dodge : "?"; B.tips = J ? Object.keys(J.tips).join(", ") + " (seguidos: " + J.ok + ")" : "?"; return B; });
   const pend = await page.evaluate(() => { const N = window.__nube, c = N.curCap(); return N.MIS.filter(m => m[0] === c && !N.save.mis[m[1]]).map(m => m[1] + " " + m[2] + " (" + Math.floor(m[3]()) + "/" + m[4] + ")"); });
   await browser.close();
@@ -163,7 +166,9 @@ const MIN = +(process.argv[2] || 25), SEED = +(process.argv[3] || 1), NOVATO = p
   console.log("\nNiveles (nivel @ m:ss): " + B.lv.map(([l, t]) => l + "@" + fmt(t)).join("  "));
   console.log("Capítulos completados: " + (B.cap.map(([c, t]) => "cap" + c + "@" + fmt(t)).join("  ") || "ninguno"));
   const ach = result[result.length - 1].ach;
-  console.log("Logros: " + ach + " en " + MIN + " min (" + (ach / MIN).toFixed(2) + "/min)");
+  console.log("Logros: " + ach + " en " + MIN + " min (" + (ach / MIN).toFixed(2) + "/min) · a los 5 min: " + (result[4] || {}).ach + " · a los 10 min: " + (result[9] || {}).ach);
+  if (avisos) { let mx = 0; for (const a of avisos) mx = Math.max(mx, avisos.filter(b => b[0] >= a[0] && b[0] < a[0] + 60).length);
+    console.log("Avisos de logro: " + avisos.length + " (juntan " + avisos.reduce((s, a) => s + a[1], 0) + " logros) · como mucho " + mx + " en 60 s · " + avisos.map(a => fmt(a[0]) + (a[1] > 1 ? "×" + a[1] : "")).join(" ")); }
   console.log("Evaporaciones: " + B.evap + " · veces que encoge: " + B.shrink + " · tamaño perdido por causa: " + JSON.stringify(B.why || {}) + " · segundos sin agua: " + Math.round(B.dryT));
   console.log("Encuentros con rivales más grandes (a menos de 900): " + (B.enc || 0) + " · tiempo huyendo (s): " + Math.round(B.bigNear) + " · avionetas: " + B.planes + " (le dieron " + B.planeHits + ", esquivadas " + B.dodge + ")");
   console.log("Huecos >20 s sin nada notable: " + B.gaps.length + " " + JSON.stringify(B.gaps) + " · el más largo: " + Math.round(B.longGap) + " s");
