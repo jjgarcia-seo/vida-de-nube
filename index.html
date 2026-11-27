@@ -347,9 +347,9 @@ h1{font-family:var(--display);font-weight:800;font-size:clamp(34px,7vw,52px);lin
 
   <div class="overlay" id="intro">
     <div class="card">
-      <p class="eyebrow">Versión 6 · misiones y joystick</p>
+      <p class="eyebrow">Versión 7 · historia, jefas y lugares nuevos</p>
       <h1>Vida de Nube</h1>
-      <p>Eres una nube pequeña sobre un valle enorme. <b>Toca el mapa o usa el joystick</b> para flotar (se cambia en Ajustes). Arriba a la izquierda tienes siempre tus <b>misiones</b>: ellas te dicen qué hacer.</p>
+      <p>Eres una nube pequeña sobre un valle enorme. <b>Toca el mapa o usa el joystick</b> para flotar (se cambia en Ajustes, también desde la pausa). Arriba a la izquierda tienes siempre tus <b>misiones</b>: ellas te dicen qué hacer.</p>
       <p><b>Bebe</b> sobre el lago, el río o el mar. <b>Crece</b> fundiéndote con otras nubes. <b>Llueve</b> donde quieras y mira qué pasa abajo. La sombra en el suelo marca dónde cae tu lluvia.</p>
       <p><b>Sube de nivel</b> para aprender rayos, ráfagas y tornados, y descubre las siete formas de nube. El sol te evapora: sin agua encoges. A partir del nivel 3 hay <b>nubes rivales</b>: la grande se come a la pequeña.</p>
       <button class="cta" id="btnStart" type="button">Empezar a flotar</button>
@@ -1195,7 +1195,7 @@ function toastPump(){const now=performance.now();if(!TQ.length||now<tqNext||paus
   t.children[0].textContent=label;t.children[1].textContent=title;t.children[2].textContent=text;if(!text)t.children[2].remove();
   const box=$("toasts");while(box.children.length>=1)box.firstChild.remove();box.appendChild(t);setTimeout(()=>t.remove(),label==="Aviso"?4600:3400);
   if(snd)snd();tqNext=now+(label==="Logro"?3200:2200)}
-function unlock(id){if(save.ach[id])return;save.ach[id]=1;const a=ACH.find(a=>a[0]===id);toast("Logro",a[1],a[2],chime);persist();gain(10);refreshAch()}
+function unlock(id){if(save.ach[id])return;save.ach[id]=1;const a=ACH.find(a=>a[0]===id);toast("Logro",a[1],a[2],chime);persist();gain(6);refreshAch()}
 function refreshAch(){const n=ACH.filter(a=>save.ach[a[0]]).length;
   $("achCount").textContent=n+"/"+ACH.length;$("achCount2").textContent=n+"/"+ACH.length;
   const nx=ACH.find(a=>!save.ach[a[0]]);const h=$("hint");h.textContent="";
@@ -1328,8 +1328,8 @@ const UPS={
   rayo:{n:"Rayo",d:"Acción nueva: lanzar rayos con tamaño 3. Cada nivel abarata y refuerza.",max:4,min:3,act:1},
   tornado:{n:"Tornado",d:"Acción nueva: desatar un tornado con tamaño 6. Cada nivel lo alarga.",max:3,min:7,act:1}
 };
-const NEED=[60,90,120,150,200,250,300,350,400,450];
-const need=l=>NEED[l-1]||450+60*(l-10);
+const NEED=[60,100,150,210,280,360,450,550,660,780];
+const need=l=>NEED[l-1]||780+130*(l-10);
 let pendLv=save.pts||0,paused=false,combo=0,comboT=0;
 function gain(n,x,y){if(!started)return;if(save.karma>=15)n*=1.25;n=Math.round(n);save.xp+=n;
   if(n>=5&&x!==undefined)floats.push({x,y:y-40,t:1.6,txt:"+"+n+" exp",xp:1});
@@ -1448,10 +1448,10 @@ function world2(dt,z,Rd,A,C){
   // avioneta siembranubes: te obliga a soltar agua y te encoge
   seedT-=dt;if(!seedPlane&&seedT<=0&&save.lvl>=4&&P.m>=5&&!hid){const a=Math.random()*TAU;seedPlane={x:P.x-Math.cos(a)*1900,y:P.y-A-Math.sin(a)*1900,a,t:0,flee:0,hit:0,tr:0};
     toast("Aviso","Avioneta siembranubes","Viene a deshacerte. Esquívala o recíbela con un rayo.",alarm)}
-  const sp=seedPlane;if(sp){sp.t+=dt;if(!sp.flee&&!sp.hit&&!hid){let da=Math.atan2(P.y-A-sp.y,P.x-sp.x)-sp.a;da=Math.atan2(Math.sin(da),Math.cos(da));sp.a+=clamp(da,-.7*dt,.7*dt)}
+  const sp=seedPlane;if(sp){sp.t+=dt;if(!sp.flee&&!sp.hit&&!hid){let da=Math.atan2(P.y-A-sp.y,P.x-sp.x)-sp.a;da=Math.atan2(Math.sin(da),Math.cos(da));sp.a+=clamp(da,-.45*dt,.45*dt)}
     sp.x+=Math.cos(sp.a)*310*dt;sp.y+=Math.sin(sp.a)*310*dt;sp.tr-=dt;if(sp.tr<=0&&!sp.flee){sp.tr=.12;sparks.push({x:sp.x,y:sp.y,vx:rnd(-20,20),vy:rnd(10,50),t:.7})}
     if(!sp.hit&&!sp.flee&&!hid&&dist(sp.x,sp.y,P.x,P.y-A)<Rd*.75){sp.hit=1;hurt(.3,1);feedback("medium",P.x,P.y-A);zap()}
-    if(sp.t>17||((sp.hit||sp.flee)&&sp.t>6&&dist(sp.x,sp.y,P.x,P.y)>1800)){seedPlane=null;seedT=rnd(70,110)}}
+    if(sp.t>17||((sp.hit||sp.flee)&&sp.t>6&&dist(sp.x,sp.y,P.x,P.y)>1800)){seedPlane=null;seedT=rnd(110,170)}}
   // cañones antinube del pueblo: solo si tienes mala fama
   if(save.karma<=-15&&save.form!=="cirro")for(const k of CANNONS){k.t-=dt;const d=dist(k.x,k.y,P.x,P.y);if(k.t<=0&&d<780){k.t=2.6;const tx=P.x,ty=P.y-A*.5,l=dist(k.x,k.y,tx,ty)||1;
       shots.push({x:k.x,y:k.y,vx:(tx-k.x)/l*300,vy:(ty-k.y)/l*300,t:3.2});noiseShot(.3,"lowpass",300,80,.3,AU.sfx)}}
@@ -1957,7 +1957,7 @@ function petSpawn(force){const act=petQ.map(q=>q.T.id),cand=[];let tw=0;
   toast("Petición",T.who+" "+T.ask,T.say,sAsk);
   const h=stH();if(!h.intro){h.intro=1;toast("La vieja nube","Un vecino te necesita","Busca su bocadillo en el mapa. Si le ayudas, ganas experiencia y cariño; si haces lo contrario, algo de experiencia y mala fama.")}
   return q}
-function petEnd(q,res){const i=petQ.indexOf(q);if(i>=0)petQ.splice(i,1);const T=q.T,h=stH(),xp=25+6*save.lvl;if(petCd<18)petCd=rnd(18,32);petSig="";
+function petEnd(q,res){const i=petQ.indexOf(q);if(i>=0)petQ.splice(i,1);const T=q.T,h=stH(),xp=15+3*save.lvl;if(petCd<18)petCd=rnd(18,32);petSig="";
   if(res==="ok"){h.ok++;h.kinds[T.id]=1;gain(xp,q.x,q.y);karma(4);floats.push({x:q.x,y:q.y-70,t:2.4,txt:"¡gracias, nube!"});toast("Petición cumplida",T.who,T.okT,sOk);feedback("small");
     unlock("h_vecina");if(h.ok>=10)unlock("h_pet10");if(h.ok>=30)unlock("h_pet30");if(q.t<10)unlock("h_pelos");if(time-hOkT<30)unlock("h_dos");hOkT=time;
     if(T.id==="sombra")unlock("h_sombra");if(T.id==="bomberos")unlock("h_brigada");if(T.id==="nieve")unlock("h_muneco");if(PET.every(t=>h.kinds[t.id]))unlock("h_todos")}

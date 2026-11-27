@@ -28,6 +28,16 @@ Busca estos comentarios `/* ---------- … ---------- */` dentro del `<script>`:
 - **Estaciones**, **Formas de nube** (`FM` = efectos, `FORMS` = textos, `FST` = barras).
 - **Peligros**: nubes rivales, avioneta siembranubes, cañones (`world2`).
 - **Misiones y contadores**: capítulos `MIS`, contadores `cnt(k)` y logros por niveles `TIERS`.
+- **Lugares y secretos** (`mundo*`, estado `save.mundo`): embalse, aeródromo, feria, playa, viñedo,
+  valle escondido, gotas doradas y eventos con horario.
+- **Habilidades y jefes** (`mec*`, estado `save.mec`): granizo, niebla densa, nevada y las 4 jefas.
+- **Historia y peticiones** (`historia*`, `PET`, `MIS_WHERE`, estado `save.hist`): vieja nube,
+  flecha de objetivo y favores de los vecinos.
+- **Animación** (`AN`, `anim*`, `draw*` auxiliares): nube viva, lluvia, gente, árboles y cielo.
+- **Jugabilidad** (`jug*`, estado `save.jug`): consejos de los primeros minutos y menú de pausa.
+
+Cada módulo guarda su estado con una función `stX()` que crea su objeto en `save` si falta, así
+no hace falta tocar `fresh()`. Los logros nuevos se añaden con `ACH.push(...)` dentro del módulo.
 - **update(dt)**: toda la simulación. **draw(dt)**: todo el dibujo.
 
 `window.__nube` expone el estado para pruebas (no lo uses dentro del juego).
@@ -40,7 +50,8 @@ npm test
 ```
 
 `npm test` abre el juego en un Chromium sin ventana, simula un rato de partida y falla si hay
-errores de JavaScript. Pásalo siempre antes de subir cambios. Si el cambio es visual, haz además
+errores de JavaScript. `npm run bot` juega una partida de 25 minutos y mide el ritmo (niveles,
+capítulos, logros por minuto, huecos sin nada que hacer); úsalo al tocar números de equilibrio. Pásalo siempre antes de subir cambios. Si el cambio es visual, haz además
 una captura con Playwright a 1280×760 y a 400×780 y revísala.
 
 ## Guías disponibles

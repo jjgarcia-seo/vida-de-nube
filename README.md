@@ -14,7 +14,20 @@ Se juega en el navegador, en ordenador y en móvil, y se puede instalar en el m�
   hace falta servirlo: `npm start` y abre la dirección que aparece.
 
 Controles: tocar o hacer clic en el mapa, o joystick en pantalla (se elige en Ajustes).
-Teclado: WASD o flechas para moverte, espacio para llover, E rayo, Q tornado, Mayús ráfaga.
+Teclado: WASD o flechas para moverte, espacio para llover, E rayo, Q tornado, Mayús ráfaga,
+R granizo, F niebla densa, G nevada, Esc o P pausa.
+
+## Qué hay en el juego
+
+- Historia en 5 capítulos contada por la vieja nube, con 35 misiones y una flecha que señala el objetivo.
+- Peticiones de los vecinos que puedes cumplir o fastidiar: el valle recuerda si eres buena o mala nube.
+- Siete formas de nube con habilidades distintas, y habilidades que se aprenden al subir de nivel:
+  rayo, tornado, ráfaga, granizo, niebla densa y nevada.
+- Cuatro nubes jefas, una por estación: Centella, Siroca, Galerna y Cierza.
+- Nubes rivales, avioneta siembranubes y cañones antinube si te ganas mala fama.
+- Un valle con ciudad, pueblo, granja, bosque, montañas, puerto, isla secreta, embalse, aeródromo,
+  feria, playa, viñedo y un valle escondido; 20 gotas doradas y eventos con horario.
+- Día y noche, cuatro estaciones, viento que manda y más de 150 logros.
 
 ## Publicarlo en GitHub Pages
 
@@ -43,17 +56,16 @@ La partida se guarda en el navegador de cada jugador (`localStorage`).
 | `index.html` | El juego entero |
 | `manifest.webmanifest`, `sw.js`, `icons/` | Que se pueda instalar en el móvil y jugar sin conexión |
 | `tests/smoke.js` | Prueba automática: `npm install` y luego `npm test` |
+| `tests/bot.js` | Bot que juega solo y mide el ritmo: `npm run bot` |
 | `CLAUDE.md` | Guía para agentes de IA que trabajen en el proyecto |
 | `.claude/skills/` | Guías de desarrollo de juegos que usan esos agentes |
 
 ## Ideas pendientes
 
-- Flecha en el mapa que señale el objetivo de la misión actual.
-- Peticiones de los vecinos (granjero, colegio, bomberos) como fuente principal de experiencia.
-- Más ataques de nube: granizo, niebla que frena coches, nevadas.
-- Jefes: una gran nube rival por estación.
+- Misiones de capítulo para los lugares nuevos (embalse, feria, valle escondido…).
+- Las jefas en el minimapa.
+- Gente y animales algo más grandes o con más detalle cuando la cámara está lejos.
 - Modo barrio: generar el mapa con datos reales de OpenStreetMap (parques, colegios, calles).
-- Noche de otoño más clara y cámara algo más cerca en móvil.
 
 ## Derechos de autor
 
