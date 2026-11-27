@@ -198,6 +198,12 @@ h1{font-family:var(--display);font-weight:800;font-size:clamp(34px,7vw,52px);lin
   #br{gap:6px}
   #stat{min-width:0;width:122px}
   #stat .row{flex-wrap:wrap;gap:0 10px;font-size:12px}
+  #btnUp,#btnCfg,#btnAch{min-height:44px;min-width:44px}
+  .act{min-height:50px;min-width:58px}
+  #btnForm{min-height:36px}
+  #btnCfg{display:none}
+  #joy{left:max(16px,env(safe-area-inset-left,0px));margin-left:0;bottom:calc(max(12px,env(safe-area-inset-bottom,0px)) + 80px)}
+  #br{flex-wrap:wrap-reverse;justify-content:flex-end;max-width:calc(100vw - 140px)}
 }
 /* Historia y peticiones */
 #hiCv{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
@@ -251,6 +257,53 @@ h1{font-family:var(--display);font-weight:800;font-size:clamp(34px,7vw,52px);lin
 #bossBar.weak #bossHpF{background:var(--amber)}
 #bossPh{display:block;font-size:12px;color:var(--paper-dim);line-height:1.25}
 @media (max-width:560px){#bossBar{top:auto;bottom:236px;width:min(300px,72vw);padding:5px 10px 6px}#bossName{font-size:16px}#bossTitle{font-size:10px}}
+/* Jugabilidad */
+#game>.overlay{z-index:10} /* los paneles tapan también el joystick */
+#btnPause{display:flex;align-items:center;justify-content:center;min-width:40px}
+#btnPause svg{display:block}
+#jugTip{position:absolute;left:0;top:0;max-width:300px;padding:7px 11px 8px;background:rgba(13,24,28,.92);border:1px solid var(--amber);
+  border-radius:6px;color:var(--paper);font-size:14px;line-height:1.3;text-align:center;pointer-events:none;opacity:0;transition:opacity .25s,border-color .25s;
+  box-shadow:0 6px 18px rgba(0,0,0,.45);will-change:transform}
+#jugTip::after{content:"";position:absolute;left:var(--ax,50%);bottom:-6px;width:10px;height:10px;margin-left:-6px;background:rgba(13,24,28,.92);
+  border:solid var(--amber);border-width:0 1px 1px 0;transform:rotate(45deg);transition:border-color .25s}
+#jugTip.on{opacity:1}
+#jugTip.band::after{display:none}
+#jugTip.ok,#jugTip.ok::after{border-color:var(--water)}
+#jugTip b{color:var(--amber);font-weight:700}
+#jugTip.ok b{color:var(--water)}
+#pauseCard{max-width:460px}
+#pauseBody{overflow-y:auto;padding:12px 18px 18px}
+#pauseStat{margin:0 0 12px;color:var(--paper-dim);font-size:14px}
+#pauseStat b{color:var(--paper)}
+#pauseGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+#pauseGrid .cta{grid-column:1/-1;align-self:stretch;margin:0;min-height:48px}
+.pbtn{min-height:44px;background:var(--ink-2);border:1px solid var(--line);border-radius:4px;padding:8px 10px;font-weight:700;font-size:15px;text-align:center}
+.pbtn:hover,.pbtn[aria-expanded=true]{border-color:var(--amber)}
+#pHome{color:var(--paper-dim)}
+#pAchN{color:var(--amber);font-variant-numeric:tabular-nums}
+#pHelpBox{margin-top:14px;font-size:14px;line-height:1.35}
+#pHelpBox dl{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;margin:0}
+#pHelpBox dt{color:var(--amber);font-weight:700}
+#pHelpBox dd{margin:0;color:var(--paper)}
+#pHelpBox ul{margin:12px 0 0;padding-left:18px;color:var(--paper-dim);display:grid;gap:5px}
+#pHelpBox ul b{color:var(--paper)}
+#cfgBody .jugRow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+#cfgBody .jugRow button{background:none;border:1px solid var(--line);border-radius:4px;padding:8px 12px;font-size:14px;min-height:40px;color:var(--paper-dim)}
+@media (prefers-reduced-motion:reduce){#jugTip{transition:none}}
+@media (max-width:560px){
+  #btnPause{min-height:44px;min-width:44px;padding:6px 8px}
+  #jugTip{font-size:13px;max-width:calc(100vw - 32px);width:max-content;padding:7px 11px 8px}
+  #pauseBody{padding:10px 14px 14px}
+  #pHelpBox dl{grid-template-columns:1fr;gap:2px}
+  #pHelpBox dd{margin-bottom:6px}
+}
+@media (max-width:420px){#btnAch{display:none}}
+@media (max-height:520px) and (min-width:561px){ /* móvil en horizontal */
+  #mis{width:200px}#misList li:nth-child(n+2){display:none}#misList li{font-size:12px}
+  #joy{left:calc(max(16px,env(safe-area-inset-left,0px)) + 212px);margin-left:0;bottom:10px;width:96px;height:96px}
+  #knob{width:46px;height:46px;margin:-23px 0 0 -23px}
+  #br{flex-wrap:wrap-reverse;justify-content:flex-end;max-width:calc(100vw - 350px)}
+  #mini{width:92px;height:67px}#jugTip{max-width:250px;font-size:13px}}
 </style>
 </head>
 <body>
@@ -343,6 +396,43 @@ h1{font-family:var(--display);font-weight:800;font-size:clamp(34px,7vw,52px);lin
     <div class="card">
       <header><h2>Misiones</h2><button id="btnMisClose" type="button">Cerrar</button></header>
       <div id="misAll"></div>
+    </div>
+  </div>
+
+  <!-- Jugabilidad: consejo contextual junto a la nube y menú de pausa -->
+  <div id="jugTip" role="status" aria-live="polite" hidden></div>
+  <div class="overlay" id="pausePanel" hidden>
+    <div class="card" id="pauseCard" role="dialog" aria-modal="true" aria-labelledby="pauseH">
+      <header><h2 id="pauseH">Pausa</h2><button id="btnPauseClose" type="button">Seguir</button></header>
+      <div id="pauseBody">
+        <p id="pauseStat"></p>
+        <div id="pauseGrid">
+          <button class="cta" id="pResume" type="button">Seguir flotando</button>
+          <button class="pbtn" id="pMis" type="button">Misiones</button>
+          <button class="pbtn" id="pAch" type="button">Logros <span id="pAchN"></span></button>
+          <button class="pbtn" id="pUp" type="button">Mejoras</button>
+          <button class="pbtn" id="pCfg" type="button">Ajustes</button>
+          <button class="pbtn" id="pHelp" type="button" aria-expanded="false" aria-controls="pHelpBox">Cómo se juega</button>
+          <button class="pbtn" id="pHome" type="button">Volver al inicio</button>
+        </div>
+        <div id="pHelpBox" hidden>
+          <dl>
+            <dt>Moverte</dt><dd>Toca o haz clic en el mapa (mantén para seguir el dedo), joystick en pantalla, o WASD / flechas.</dd>
+            <dt>Llover</dt><dd>Espacio o botón Llover. Cae donde está tu sombra.</dd>
+            <dt>Rayo</dt><dd>Tecla E o botón Rayo (se aprende en Mejoras).</dd>
+            <dt>Ráfaga</dt><dd>Mayús o botón Ráfaga: un acelerón corto.</dd>
+            <dt>Tornado</dt><dd>Tecla Q o botón Tornado.</dd>
+            <dt>Cámara</dt><dd>Rueda del ratón, o Distancia de cámara en Ajustes.</dd>
+            <dt>Pausa</dt><dd>Esc o P, o el botón de pausa de arriba.</dd>
+          </dl>
+          <ul>
+            <li><b>Agua:</b> bebe sobre el lago, el río o el mar. El sol te seca; sin agua encoges.</li>
+            <li><b>Crecer:</b> pasa por encima de nubes blancas y recoge los brillos de vapor.</li>
+            <li><b>Rivales:</b> la marca roja ▲ es más grande que tú, huye. La verde ▼ es más pequeña, cómetela.</li>
+            <li><b>Avioneta:</b> gira despacio; apártate de lado en el último momento o dale con un rayo.</li>
+          </ul>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1238,7 +1328,7 @@ const UPS={
   rayo:{n:"Rayo",d:"Acción nueva: lanzar rayos con tamaño 3. Cada nivel abarata y refuerza.",max:4,min:3,act:1},
   tornado:{n:"Tornado",d:"Acción nueva: desatar un tornado con tamaño 6. Cada nivel lo alarga.",max:3,min:7,act:1}
 };
-const NEED=[30,70,100,150,200,250,300,350,400,450];
+const NEED=[60,90,120,150,200,250,300,350,400,450];
 const need=l=>NEED[l-1]||450+60*(l-10);
 let pendLv=save.pts||0,paused=false,combo=0,comboT=0;
 function gain(n,x,y){if(!started)return;if(save.karma>=15)n*=1.25;n=Math.round(n);save.xp+=n;
@@ -1343,8 +1433,8 @@ function world2(dt,z,Rd,A,C){
     if(Math.abs(m.x-P.x)<mr&&Math.abs(m.y-P.y)<mr&&dist(m.x,m.y,P.x,P.y)<mr){motes.splice(i,1);P.w=Math.min(C,P.w+3);save.motes++;if(dark>.5)cnt("nmote");combo=Math.min(14,combo+1);if(combo>=14)unlock("racha");comboT=2.5;blip(combo);gain(1);if(save.motes>=100)unlock("vapor100")}}
   comboT-=dt;if(comboT<=0)combo=0;
   // nubes rivales: la grande se come a la pequeña
-  rivalT-=dt;if(rivalT<=0){rivalT=8;if(save.lvl>=3&&rivals.length<5){let x,y,k=0;do{x=Math.random()*W;y=Math.random()*6200}while(dist(x,y,P.x,P.y)<1700&&k++<20);
-      const m=Math.max(2,Math.round(P.m*rnd(.5,1.7))+(Math.random()<.5?1:0)),pf=[];for(let i=0;i<7;i++)pf.push({a:Math.random()*TAU,d:Math.random()*.55,s:.45+Math.random()*.3});
+  rivalT-=dt;if(rivalT<=0){rivalT=8;if(save.lvl>=3&&rivals.length<6){let x,y,k=0;do{x=Math.random()*W;y=Math.random()*6200}while(dist(x,y,P.x,P.y)<1700&&k++<20);
+      const m=Math.max(1,Math.round(P.m*rnd(.5,1.5))+(Math.random()<.5?1:0)),pf=[];for(let i=0;i<7;i++)pf.push({a:Math.random()*TAU,d:Math.random()*.55,s:.45+Math.random()*.3});
       rivals.push({x,y,m,r:52+24*Math.sqrt(m),pf,h:Math.random()*TAU,ph:Math.random()*6,stun:0})}}
   for(let i=rivals.length-1;i>=0;i--){const c=rivals[i],d=dist(c.x,c.y,P.x,P.y),big=c.m>P.m;c.stun=Math.max(0,c.stun-dt);
     let vx=WGX*.5,vy=WGY*.5;
@@ -1353,7 +1443,7 @@ function world2(dt,z,Rd,A,C){
     else{c.h+=(Math.random()-.5)*dt;vx+=Math.cos(c.h)*45;vy+=Math.sin(c.h)*45;c.hunt=0}
     c.x=clamp(c.x+vx*dt,60,W-60);c.y=clamp(c.y+vy*dt,60,H-60);
     if(d<Rd*.6+c.r*.6&&!hid){
-      if(big){P.steal+=dt*(fm().armor||1);FEEL.trauma=Math.max(FEEL.trauma,.3);hurt(.22*dt,0);if(P.steal>1.3){P.steal=0;zap();if(P.m>1){hurt(0,1);c.m++;c.r=52+24*Math.sqrt(c.m)}else if(P.w<=0)evaporate()}}
+      if(big){P.steal+=dt*(fm().armor||1);FEEL.trauma=Math.max(FEEL.trauma,.3);hurt(.22*dt,0);if(P.steal>1.6){P.steal=0;zap();if(P.m>1){hurt(0,1);c.m++;c.r=52+24*Math.sqrt(c.m)}else if(P.w<=0)evaporate()}}
       else{const ad=grow(Math.ceil(c.m/2));P.w+=20*c.m;FEEL.pop=1;sMerge();floats.push({x:P.x,y:P.y-A,t:2,txt:growTxt(ad)});cnt("rivE");gain(20+5*c.m,P.x,P.y);unlock("pezgrande");rivals.splice(i,1)}}}
   // avioneta siembranubes: te obliga a soltar agua y te encoge
   seedT-=dt;if(!seedPlane&&seedT<=0&&save.lvl>=4&&P.m>=5&&!hid){const a=Math.random()*TAU;seedPlane={x:P.x-Math.cos(a)*1900,y:P.y-A-Math.sin(a)*1900,a,t:0,flee:0,hit:0,tr:0};
@@ -1675,7 +1765,7 @@ function mecDraw(){const vis=(x,y,m)=>x>X0-m&&x<X0+VW+m&&y>Y0-m&&y<Y0+VH+m,el=(x
     ctx.stroke();ctx.globalAlpha=1}}
 window.__mec={get jefa(){return jefa},jefaSpawn,mecHail,mecFog,mecSnow,MEC,stM,JEFAS};
 /* ---------- Misiones y contadores ---------- */
-function grow(n){const k=12/(11+P.m);P.mf=(P.mf||0)+n*k;const add=Math.floor(P.mf);P.mf-=add;P.m+=add;return add}
+function grow(n){const k=8/(11+P.m);P.mf=(P.mf||0)+n*k;const add=Math.floor(P.mf);P.mf-=add;P.m+=add;return add}
 const growTxt=a=>a>0?"+"+a+" tamaño":"+"+Math.round(P.mf*100)+" % hacia tamaño "+(P.m+1);
 function cnt(k,n){save.c[k]=(save.c[k]||0)+(n===undefined?1:n)}
 const ct=k=>save.c[k]||0,hasA=k=>save.ach[k]?1:0,nUps=()=>Object.values(save.ups).reduce((a,b)=>a+b,0),nForms=()=>Object.keys(save.forms).length;
@@ -2012,7 +2102,7 @@ function sky(){dark=tday<.60?0:tday<.70?(tday-.6)/.1:tday<.92?1:1-(tday-.92)/.08
 /* ---------- Entrada ---------- */
 const cv=$("cv"),ctx=cv.getContext("2d");let vw=0,vh=0,dpr=1,zoom=1,zbase=1;const cam={x:P.x,y:P.y};let X0=0,Y0=0,VW=0,VH=0;
 function resize(){const g=$("game");vw=g.clientWidth;vh=g.clientHeight;dpr=Math.min(window.devicePixelRatio||1,2);
-  cv.width=Math.round(vw*dpr);cv.height=Math.round(vh*dpr);zbase=clamp(Math.min(vw,vh)/1150,.38,.85);zoom=zoom||zbase}
+  cv.width=Math.round(vw*dpr);cv.height=Math.round(vh*dpr);zbase=clamp(Math.min(vw,vh)/1150,.52,.85);zoom=zoom||zbase}
 window.addEventListener("resize",resize);resize();zoom=zbase;
 function toWorld(e){const r=cv.getBoundingClientRect();return[cam.x+(e.clientX-r.left-vw/2)/zoom,cam.y+(e.clientY-r.top-vh/2)/zoom]}
 function aim(e){const[wx,wy]=toWorld(e);P.tx=clamp(wx,40,W-40);P.ty=clamp(wy,40,H-40)}
@@ -2080,6 +2170,7 @@ function update(dt){
   time+=dt;frameN++;
   const pd=dark,pt=tday;tday=(tday+dt/DAYLEN)%1;if(tday<pt)newDay();sky();
   if(dark>=1)sawNight=true;if(sawNight&&dark===0&&pd>0){sawNight=false;if(started)unlock("amanecer")}
+  jugUpdate(dt);
   // vendaval
   if(started){galeT-=dt;if(galeT<=0&&galeLeft<=0){galeLeft=38;galeT=rnd(150,260);toast("Tiempo","Se levanta vendaval","El viento manda durante un rato.");whoosh();feedback("small")}}
   if(galeLeft>0)galeLeft-=dt;gale+=((galeLeft>0?1:0)-gale)*Math.min(1,dt*.5);
@@ -2103,7 +2194,7 @@ function update(dt){
   const rcx=P.x+wx*.3,rcy=P.y+wy*.3; // la lluvia cae desplazada por el viento
   if(started&&EXPL.includes(z)&&!save.seen[z]){save.seen[z]=1;gain(10,P.x,P.y);if(EXPL.every(k=>save.seen[k]))unlock("explorador")}
   // beber
-  if(WATER[z]&&P.w<C&&!P.rain){{const w0=P.w;P.w=Math.min(C,P.w+dt*15*Math.sqrt(P.m)*(1+.35*up("sorbo")));P.drank=(P.drank||0)+P.w-w0;if(P.drank>40)unlock("sorbo")}if(Math.random()<dt*3)sip();
+  if(WATER[z]&&P.w<C&&!P.rain){{const w0=P.w;P.w=Math.min(C,P.w+dt*18*Math.sqrt(P.m)*(1+.35*up("sorbo")));P.drank=(P.drank||0)+P.w-w0;if(P.drank>40)unlock("sorbo")}if(Math.random()<dt*3)sip();
     if(Math.random()<dt*5)floats.push({x:P.x+(Math.random()-.5)*Rd,y:P.y+(Math.random()-.5)*Rd*.6,t:1.2,vap:1})}
   // humo
   if(Math.random()<dt*7)smoke.push({x:CHIM.x,y:CHIM.y,t:0,r:10});
@@ -2162,7 +2253,7 @@ function update(dt){
     if(!c.fixed){const [cwx,cwy]=windAt(c.x,c.y);c.x+=cwx*dt;c.y+=cwy*dt;
       if(c.age>c.life+4||c.x<-260||c.x>W+260||c.y<-260||c.y>H+260){clouds.splice(i,1);continue}}
     if(started&&c.age>1.5&&dist(c.x,c.y,P.x,P.y)<(Rd*.8+c.r*.5)*(fm().eat||1)){const ad=grow(c.m);P.w+=18*c.m;
-      floats.push({x:P.x,y:P.y-A+30,t:1.8,txt:growTxt(ad)});FEEL.pop=1;sMerge();cnt("eat");gain((10+5*(c.m-1))*(fm().xpEat||1),P.x,P.y-A);unlock("union");if(c.th&&c.age<30)unlock("termica");
+      floats.push({x:P.x,y:P.y-A+30,t:1.8,txt:growTxt(ad)});FEEL.pop=1;sMerge();cnt("eat");gain((8+5*(c.m-1))*(fm().xpEat||1),P.x,P.y-A);unlock("union");if(c.th&&c.age<30)unlock("termica");
       if(c.fixed){c.fixed.t=55;unlock("gorro")}clouds.splice(i,1);persist()}}
   for(const o of oro)if(o.t>0){o.t-=dt;if(o.t<=0)clouds.push(mkCloud(o.x,o.y,{fixed:o,m:2,r:66}))}
   spawnT-=dt;if(spawnT<=0){spawnT=1.4;if(clouds.length<42){const v=Math.random();let x,y,o={};
@@ -2657,6 +2748,140 @@ function drawMini(){mc.drawImage(miniBg,0,0);const kx=248/W,ky=182/H;mc.fillStyl
   if(dark>0){mc.fillStyle="rgba(7,12,34,"+dark*.45+")";mc.fillRect(0,0,248,182)}
   mc.strokeStyle="rgba(231,220,194,.5)";mc.lineWidth=1.5;mc.strokeRect(X0*kx,Y0*ky,VW*kx,VH*ky);
   mc.fillStyle="#e2a94b";mc.beginPath();mc.arc(P.x*kx,P.y*ky,5,0,TAU);mc.fill();mc.strokeStyle="#0d181c";mc.lineWidth=2;mc.stroke()}
+
+/* ---------- Jugabilidad ---------- */
+// Consejos de los primeros minutos, menú de pausa y logros de pericia. Todo vive aquí; desde
+// update(dt) solo se llama a jugUpdate(dt) una vez por paso de simulación.
+if(cfg.tips===undefined)cfg.tips=true;
+function stJ(){if(!save.jug){save.jug={tips:{},ok:0,ev:0,dodge:0,playT:0};
+    // quien ya ha jugado bastante no necesita los consejos básicos
+    if(Object.keys(save.ach).length>=12)for(const k of ["mover","vapor","comer","sed","llover","campo","mejora","misiones"])save.jug.tips[k]=1}
+  return save.jug}
+ACH.push(["sinevap","Ni una gota perdida","Vive un día entero, de amanecer a amanecer, sin evaporarte."],
+ ["alborde","Por los pelos","Llega al agua casi seca y vuelve a llenarte."],
+ ["huida","Pies en polvorosa","Escapa de una nube rival más grande que ya te pisaba los talones."],
+ ["esquiva","Quiebro","Que la avioneta siembranubes pase cerca y se vaya sin tocarte."],
+ ["torera","Torera del cielo","Esquiva cinco avionetas siembranubes."],
+ ["sinrasguno","Sin un rasguño","Llega al nivel 6 sin haberte evaporado nunca."],
+ ["aplicada","Alumna aplicada","Sigue cinco consejos de los primeros minutos."],
+ ["constante","Nube constante","Flota treinta minutos en total."]);
+const touchy=()=>COARSE||cfg.ctrl==="joy";
+const DIRS=["al este","al sureste","al sur","al suroeste","al oeste","al noroeste","al norte","al noreste"];
+function nearWater(){let bx=LAKE.x,by=LAKE.y,bd=dist(P.x,P.y,bx,by)-LAKE.r*.8;
+  const tryP=(x,y,r)=>{const d=dist(P.x,P.y,x,y)-(r||0);if(d<bd){bd=d;bx=x;by=y}};
+  for(const p of PONDS)tryP(p.x,p.y,p.r);for(const R2 of [RIV_A,RIV_B])for(const q of R2)tryP(q[0],q[1]);tryP(P.x,coastY(P.x)+80);
+  return{x:bx,y:by,d:bd}}
+function dirTo(x,y){const a=Math.atan2(y-P.y,x-P.x);return DIRS[((Math.round(a/(TAU/8))%8)+8)%8]}
+const nearBy=(arr,r,f)=>arr.some(o=>Math.abs(o.x-P.x)<r&&Math.abs(o.y-P.y)<r&&(!f||f(o)));
+const bigNear=r=>rivals.some(c=>c.m>P.m&&dist(c.x,c.y,P.x,P.y)<r);
+let jz="prado",jC=100;
+// [id, cuándo aparece, texto, cuándo se da por seguido (o null), segundos máximos]
+const TIPS=[
+ ["seco",()=>!WATER[jz]&&P.w<=0&&P.m<=3,()=>"¡Sin agua! Si sigues así, <b>encoges</b> hasta evaporarte. Bebe ya: el agua está "+dirTo(nearWater().x,nearWater().y)+".",()=>P.w>3||WATER[jz],7],
+ ["rival",()=>bigNear(900),()=>"Esa nube con <b>▲ en rojo</b> es más grande que tú: <b>huye</b> o te robará tamaño.",()=>!bigNear(1300),7],
+ ["avioneta",()=>!!seedPlane&&!seedPlane.hit&&!seedPlane.flee,()=>"La avioneta gira despacio: <b>apártate de lado</b> en el último momento"+(up("rafaga")?" (la Ráfaga ayuda)":"")+(stormy()?" o dale con un rayo.":"."),()=>!seedPlane,8],
+ ["mover",()=>J.t>2.5,()=>cfg.ctrl==="joy"?"Arrastra el <b>joystick</b> para flotar: cuanto más lejos, más deprisa.":COARSE?"<b>Toca el mapa</b> donde quieras ir. Mantén el dedo y te sigue.":"<b>Haz clic</b> donde quieras ir, o mantén pulsado. También valen <b>WASD</b> y las flechas.",()=>J.moved>1.2,9],
+ ["sed",()=>!WATER[jz]&&P.w<jC*.25,()=>"Te queda poca agua y el sol te seca. Ve a <b>beber</b>: el agua más cercana está "+dirTo(nearWater().x,nearWater().y)+".",()=>WATER[jz],9],
+ ["beber",()=>WATER[jz]&&P.w<jC*.9&&!P.rain,()=>"Así se bebe: quédate encima del agua hasta llenar la barra azul.",()=>P.w>=jC*.85,7],
+ ["vapor",()=>nearBy(motes,260),()=>"Esos <b>brillos blancos</b> son vapor: pasa por encima. Dan agua y experiencia.",()=>save.motes>=J.m0+3,7],
+ ["comer",()=>nearBy(clouds,520,c=>c.age>1.5&&!c.fixed),()=>"Las nubes blancas se comen: <b>pásales por encima</b> para fundirte y crecer.",()=>ct("eat")>=J.e0+1,8],
+ ["llover",()=>hasA("sorbo")&&!hasA("gotas")&&P.w>jC*.5&&!WATER[jz],()=>"Ya vas cargada. "+(touchy()?"Pulsa el botón <b>Llover</b>":"Pulsa <b>espacio</b> o el botón Llover")+" y mira qué pasa abajo.",()=>P.rain,8],
+ ["campo",()=>!P.rain&&P.w>jC*.25&&fields.some(f=>f.st===1&&inRect(P.x,P.y,{x:f.x-60,y:f.y-60,w:f.w+120,h:f.h+120})),()=>"Ese campo está <b>sembrado</b>: llueve encima hasta que madure.",()=>P.rain,8],
+ ["mejora",()=>pendLv>0,()=>"¡Has subido de nivel! Abre <b>Mejoras</b>, arriba a la derecha, y elige una.",()=>!pendLv,9],
+ ["misiones",()=>J.t>45,()=>"Arriba a la izquierda tienes tus <b>misiones</b>: te dicen qué probar ahora.",null,7],
+ ["presa",()=>rivals.some(c=>c.m<P.m&&dist(c.x,c.y,P.x,P.y)<800),()=>"Esa nube con <b>▼ en verde</b> es más pequeña: pásale por encima y te la comes.",()=>ct("rivE")>J.r0,7],
+ ["rayoMejora",()=>curCap()===3&&!up("rayo")&&pendLv>0,()=>"Tu misión pide el <b>rayo</b>: búscalo al abrir Mejoras.",()=>up("rayo")>0,8],
+ ["rayo",()=>up("rayo")&&stormy()&&!ct("ray"),()=>"Vas cargada de tormenta: lanza un rayo con "+(touchy()?"el botón <b>Rayo</b>.":"la tecla <b>E</b>."),()=>ct("ray")>0,8],
+ ["fuego",()=>curCap()===3&&!save.mis.c4&&up("rayo")&&!trees.some(t=>t.st===1)&&J.t>30,()=>"Para apagar fuegos primero tiene que haberlos: un <b>rayo en el bosque</b> y luego lluvia.",null,8],
+ ["forma",()=>nForms()>1&&save.form==="cumulo",()=>"Tienes una forma nueva. Cámbiala con el botón <b>Forma</b>, a la izquierda.",()=>save.form!=="cumulo",8],
+ ["noche",()=>dark>.7,()=>"De noche el sol no te evapora: buen momento para viajar lejos.",null,6],
+ ["pausa",()=>!COARSE&&J.t>150,()=>"Pulsa <b>Esc</b> o <b>P</b> para pausar y ver todos los controles.",null,6]
+];
+const J={t:0,moved:0,m0:0,e0:0,r0:0,tip:null,tipT:0,gap:2.6,okT:0,chk:0,plane:null,dry:false,day:save.day,dayT:0,dayBad:false};
+const TIP=$("jugTip");
+function tipHide(){TIP.classList.remove("on","ok");J.tip=null;J.gap=3;setTimeout(()=>{if(!J.tip)TIP.hidden=true},260)}
+function tipShow(t){J.tip=t;J.tipT=0;J.okT=0;stJ().tips[t[0]]=1;J.m0=save.motes;J.e0=ct("eat");J.r0=ct("rivE");
+  TIP.innerHTML=t[2]();TIP.classList.remove("ok");TIP.hidden=false;J.tw=TIP.offsetWidth;J.th=TIP.offsetHeight;requestAnimationFrame(()=>TIP.classList.add("on"));tipPlace()}
+function tipPlace(){if(TIP.hidden)return;
+  if(vw<=560||vh<=520){ // en el móvil, banda abajo, encima del joystick y de los botones
+    const jb=!$("joy").hidden?$("joy").getBoundingClientRect():null,top=Math.min(jb?jb.top:vh,$("br").getBoundingClientRect().top,$("bl").getBoundingClientRect().top)-10;
+    TIP.classList.add("band");TIP.style.transform="translate("+Math.round((vw-(J.tw||200))/2)+"px,"+Math.round(top-(J.th||40))+"px)";return}
+  TIP.classList.remove("band");const A=alt(),r=rad();
+  let sx=(P.x-X0)*zoom,sy=(P.y-A-r*.62-Y0)*zoom-12;const w=J.tw||200,h=J.th||40,m=12;
+  const cx=clamp(sx,w/2+m,vw-w/2-m),cy=clamp(sy,h+m+(vw<=560?150:70),vh-m);
+  TIP.style.setProperty("--ax",clamp(50+(sx-cx)/w*100,8,92)+"%");TIP.style.transform="translate("+Math.round(cx-w/2)+"px,"+Math.round(cy-h)+"px)"}
+function tipFrame(dt){
+  if(!cfg.tips||!started){if(J.tip)tipHide();return}
+  const t=J.tip;
+  if(t){J.tipT+=dt;tipPlace();
+    if(J.okT>0){J.okT-=dt;if(J.okT<=0)tipHide();return}
+    if(t[3]&&J.tipT>1.2&&t[3]()){TIP.classList.add("ok");J.okT=1.1;const s=stJ();s.ok++;if(s.ok>=5)unlock("aplicada");return}
+    if(J.tipT>t[4])tipHide();return}
+  J.gap-=dt;if(J.gap>0)return;J.chk-=dt;if(J.chk>0)return;J.chk=.3;
+  const seen=stJ().tips;for(const c of TIPS)if(!seen[c[0]]&&c[1]()){if(c[3]&&c[3]()){seen[c[0]]=1;continue}tipShow(c);break}}
+function jugUpdate(dt){
+  if(!started)return;
+  const z=zoneAt(P.x,P.y),C=cap(),Rd=rad(),s=stJ();jz=z;jC=C;
+  J.t+=dt;s.playT+=dt;if(s.playT>=1800)unlock("constante");
+  if(pointerDown||(joy.on&&joy.m>.12)||keys["w"]||keys["a"]||keys["s"]||keys["d"]||keys["arrowup"]||keys["arrowdown"]||keys["arrowleft"]||keys["arrowright"])J.moved+=dt;
+  tipFrame(dt);
+  // un día entero sin evaporarte
+  if(save.day!==J.day){if(J.dayT>=DAYLEN*.9&&!J.dayBad)unlock("sinevap");J.day=save.day;J.dayT=0;J.dayBad=false}J.dayT+=dt;
+  if(save.lvl>=6&&!save.ach.evaporada&&!s.ev)unlock("sinrasguno");
+  // llegar al agua casi seca
+  if(!WATER[z]&&P.w<C*.05)J.dry=true;else if(J.dry&&WATER[z]&&P.w>C*.6){J.dry=false;unlock("alborde")}
+  // esquivar la avioneta: tiene que haber pasado cerca
+  const sp=seedPlane;if(sp){J.plane=sp;const d=dist(sp.x,sp.y,P.x,P.y-alt());if(d<Rd*2.2)sp.jNear=1}
+  else if(J.plane){const q=J.plane;J.plane=null;if(q.jNear&&!q.hit&&!q.flee){s.dodge++;gain(15,P.x,P.y);floats.push({x:P.x,y:P.y-alt()-40,t:1.8,txt:"¡esquivada!"});unlock("esquiva");if(s.dodge>=5)unlock("torera")}}
+  // rivales: escapar de una grande que ya te alcanzaba
+  for(let i=rivals.length-1;i>=0;i--){const c=rivals[i],d=dist(c.x,c.y,P.x,P.y);
+    // las rivales nuevas que nacen en la otra punta del valle aparecen a veces a media distancia
+    if(!c.jg){c.jg=1;if(d>3200&&Math.random()<.35){const a=Math.random()*TAU,r=rnd(1900,2800);c.x=clamp(P.x+Math.cos(a)*r,60,W-60);c.y=clamp(P.y+Math.sin(a)*r,60,6200)}}
+    if(c.m>P.m){if(d<Rd*.6+c.r*.6+170)c.jClose=1;else if(c.jClose&&d>1300){c.jClose=0;unlock("huida")}}else c.jClose=0;
+    // una rival que te persigue mucho rato se cansa y se para un momento: da tiempo a escapar
+    if(c.hunt===1&&d<900&&c.stun<=0){c.jHunt=(c.jHunt||0)+dt;if(c.jHunt>12){c.jHunt=0;c.stun=3.5;floats.push({x:c.x,y:c.y-c.r-30,t:1.8,txt:"se cansa"})}}else if(d>900)c.jHunt=0;
+    // las que se quedan mucho tiempo lejísimos se deshacen y dejan sitio a otras
+    if(d>4300){c.jFar=(c.jFar||0)+dt;if(c.jFar>45)rivals.splice(i,1)}else c.jFar=0}
+}
+{const ev0=evaporate;evaporate=function(){const s=stJ();s.ev++;J.dayBad=true;J.dry=false;ev0()}}
+/* menú de pausa */
+const PP=$("pausePanel");let jBack=false;
+const topOverlay=()=>{const l=[...document.querySelectorAll("#game .overlay")].filter(o=>!o.hidden&&o.id!=="intro");return l[l.length-1]||null};
+function jugPause(on){
+  if(on){if(!started)return;paused=true;if(J.tip)tipHide();
+    $("pauseStat").innerHTML="Nivel <b>"+save.lvl+"</b> · Tamaño <b>"+P.m+"</b> · "+(curCap()<=5?"Capítulo <b>"+curCap()+"</b>":"Vida completa")+" · Día <b>"+(save.day+1)+"</b>";
+    $("pAchN").textContent=$("achCount").textContent;PP.hidden=false;setTimeout(()=>$("pResume").focus(),0)}
+  else{PP.hidden=true;$("pHelpBox").hidden=true;$("pHelp").setAttribute("aria-expanded","false");paused=!!topOverlay()&&topOverlay().id!=="pausePanel"}}
+function fromPause(id,open){jBack=true;PP.hidden=true;open();paused=true;const o=$(id),b=o&&o.querySelector("header button");if(b)setTimeout(()=>b.focus(),0)}
+function backToPause(){if(!jBack)return;jBack=false;jugPause(true)}
+$("pResume").onclick=$("btnPauseClose").onclick=()=>jugPause(false);
+$("pMis").onclick=()=>fromPause("misPanel",()=>{buildMisAll();$("misPanel").hidden=false});
+$("pAch").onclick=()=>fromPause("achPanel",()=>{$("achPanel").hidden=false});
+$("pCfg").onclick=()=>fromPause("cfgPanel",()=>{$("cfgPanel").hidden=false});
+$("pUp").onclick=()=>fromPause("lvPanel",openLv);
+$("pHelp").onclick=()=>{const b=$("pHelpBox");b.hidden=!b.hidden;$("pHelp").setAttribute("aria-expanded",String(!b.hidden));if(!b.hidden)b.scrollIntoView({block:"nearest"})};
+$("pHome").onclick=()=>{jBack=false;persist();if(P.rain)stopRain();joyEnd();PP.hidden=true;started=false;paused=false;if(J.tip)tipHide();
+  $("btnStart").textContent="Seguir flotando";$("intro").hidden=false;if(AU.ctx)AU.ctx.suspend();setTimeout(()=>$("btnStart").focus(),0)};
+for(const id of ["btnMisClose","btnClose","btnCfgClose","btnFormClose","btnLvClose"]){const b=$(id);if(b)b.addEventListener("click",backToPause)}
+{const b=document.createElement("button");b.className="panel";b.id="btnPause";b.type="button";b.title="Pausa (Esc o P)";b.setAttribute("aria-label","Pausa");
+  b.innerHTML='<svg viewBox="0 0 12 14" width="12" height="14" aria-hidden="true"><rect x="1" y="1" width="3.6" height="12" rx="1" fill="currentColor"/><rect x="7.4" y="1" width="3.6" height="12" rx="1" fill="currentColor"/></svg>';
+  b.onclick=()=>jugPause(true);$("btnUp").parentNode.prepend(b)}
+// Esc cierra lo que haya abierto o pausa; P pausa y reanuda. Mientras está en pausa, las teclas no mueven la nube.
+window.addEventListener("keydown",e=>{const k=e.key.toLowerCase();
+  if(k==="escape"||(k==="p"&&!e.ctrlKey&&!e.metaKey&&!e.altKey)){if(!started||e.repeat)return;e.preventDefault();e.stopImmediatePropagation();
+    const o=topOverlay();
+    if(o&&o.id==="pausePanel")jugPause(false);
+    else if(o){if(k==="escape"){const b=o.querySelector("header button")||o.querySelector(".cta");if(b)b.click()}}
+    else jugPause(true);return}
+  if(!PP.hidden&&k!=="tab"&&k!=="enter")e.stopImmediatePropagation()},true);
+document.addEventListener("visibilitychange",()=>{if(document.hidden&&started&&!topOverlay())jugPause(true)});
+for(const el of [cv,JE])el.addEventListener("pointerdown",()=>{if(started)J.moved+=.45}); // cada toque cuenta para el consejo de moverse
+/* ajustes: consejos */
+{const row=document.createElement("div");row.className="jugRow";
+  row.innerHTML='<label class="chk" for="cTips"><input type="checkbox" id="cTips">Consejos para empezar</label><button type="button" id="btnTipsAgain">Volver a ver los consejos</button>';
+  $("cfgBody").appendChild(row);$("cTips").checked=cfg.tips;$("cTips").onchange=e=>{cfg.tips=e.target.checked;saveCfg();if(!cfg.tips&&J.tip)tipHide()};
+  $("btnTipsAgain").onclick=e=>{stJ().tips={};cfg.tips=true;$("cTips").checked=true;saveCfg();J.gap=1;e.target.textContent="Hecho: volverán a salir";persist()}}
+queueMicrotask(()=>{const N=window.__nube;if(!N)return;Object.assign(N,{pause:jugPause,jug:stJ,need});Object.defineProperty(N,"tip",{get:()=>J.tip&&J.tip[0]})});
 
 /* ---------- Bucle ---------- */
 refreshAch();refreshForms();refreshPts();refreshMis();sky();
