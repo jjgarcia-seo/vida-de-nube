@@ -1872,7 +1872,7 @@ const hMote=()=>hXY(hNear(motes,null,2600),40);
 const H_CITY=[CITY.x+CITY.w/2,CITY.y+CITY.h/2,500];
 const H_ZONE={lago:[LAKE.x,LAKE.y,400],rio:[RIV_A[2][0],RIV_A[2][1],60],ciudad:H_CITY,pueblo:[VILLAGE.x,VILLAGE.y,300],puerto:[PORT.x,PORT.y,220],
   granja:[FARM.x+FARM.w/2,FARM.y+FARM.h/2,500],montana:[MOUNT.x,MOUNT.y,700],bosque:[FORESTS[0].x,FORESTS[0].y,800]};
-const hZone=()=>{let b=null,bd=1e9;for(const k of EXPL){if(save.seen[k])continue;const p=k==="mar"?hSea():H_ZONE[k],d=dist(p[0],p[1],P.x,P.y);if(d<bd){bd=d;b=p}}return b};
+const hZone=()=>{let b=null,bd=1e9;for(const k of EXPL){if(save.seen[k])continue;const p=k==="mar"?hSea():H_ZONE[k];if(!p)continue;/* Diversión: las zonas nuevas de Lugares no tienen sitio aquí y rompían update() */const d=dist(p[0],p[1],P.x,P.y);if(d<bd){bd=d;b=p}}return b};
 const hForm=()=>!save.forms.lenticular?[PEAK.x,PEAK.y,60]:!save.forms.estrato&&dark>.5?hSea():!save.forms.niebla&&dark>.4&&P.m<=4?hXY(hNear(H_WAT)):null;
 const hPeople=()=>hXY(hNear([{x:VILLAGE.x,y:VILLAGE.y,r:250},{x:H_CITY[0],y:H_CITY[1],r:400},{x:PORT.x,y:PORT.y,r:200}]));
 const hRival=small=>hXY(hNear(rivals,c=>!small||c.m<P.m),40);
@@ -2140,6 +2140,336 @@ $("btnReset").onclick=()=>{if(!armed)return resetArm(true);try{localStorage.remo
   resetArm(false);refreshAch();$("achPanel").hidden=true};
 if(Object.keys(save.ach).length)$("btnStart").textContent="Seguir flotando";
 
+/* ---------- Diversión ---------- */
+// Lo que hace que cada momento tenga algo que hacer, encima de lo que ya había:
+// - Racha: encadenar acciones DISTINTAS (comer una nube, regar, un rayo, mojar a alguien...) en pocos
+//   segundos; desde 3 distintas multiplica la experiencia ganada en ella (×1,1 a ×1,3) y se cobra al
+//   acabarse el tiempo. Si algo te hace daño antes, se pierde. El vapor no suma tipo, pero la alarga.
+// - Ristra: muchas motas de vapor seguidas se pagan al final.
+// - Corrientes: cintas de viento rápido que se ven en el mapa. Dentro vuelas mucho más deprisa y
+//   arrastran vapor. Algunas, más largas, te llevan a otra zona.
+// - Sucesos cerca de la nube que caducan, con aviso en el borde de la pantalla: frente de nubes,
+//   fuego en el bosque, banco de vapor y nube rival herida.
+// - Maniobras: rozar a una rival grande sin que te robe y esquivar la avioneta por los pelos.
+// - Tormenta desatada: lloviendo con tamaño 5 y carga de rayo caen rayos solos alrededor, los tuyos
+//   se ramifican y todos dejan quemaduras en el suelo.
+// - Director de ritmo: si llevas un rato sin nada destacable, adelanta el siguiente suceso, trae una
+//   corriente o deja una estela de vapor por delante.
+// Se engancha con funUpdate() en update() y funDraw() en draw(); el suelo (quemaduras y ondas) se
+// pinta envolviendo drawPuddles. Lo que sobrevive a la partida va en save.fun (stF).
+function stF(){if(!save.fun)save.fun={best:0,surf:0,ev:0,storm:0,graze:0,close:0};return save.fun}
+const FUN={R:{k:[],t:0,acc:0,age:0,pop:0},jets:[],jetT:8,jetHint:0,ev:null,evT:30,evLast:"",marks:[],rings:[],px:[],glint:0,
+  st:{on:false,hold:0,off:0,t:0,n:0,amb:2},c:null,mc:0,quiet:0,trailT:-99,rain:false,tor:false,pollT:0,ride:0,rideJ:null,out:0,au:null,auG:-1,sp:null,
+  q:{d:0,cx:0,cy:0,tx:0,ty:0,s:0},log:{}};
+const funLog=(k,n)=>{FUN.log[k]=(FUN.log[k]||0)+n}; // para medir con el bot de dónde sale la experiencia nueva
+const FUK={nube:"nube",rayo:"rayo",presa:"presa",apagar:"fuego",riego:"riego",mojar:"mojar",granizo:"granizo",quiebro:"quiebro",
+  corriente:"corriente",suceso:"suceso",roce:"roce",huida:"huida",tormenta:"tormenta",tornado:"tornado"};
+let FUC=null;
+function funCol(){if(FUC)return FUC;const cs=getComputedStyle(document.documentElement),v=(n,d)=>cs.getPropertyValue(n).trim()||d,
+  rgb=h=>{h=h.replace("#","");if(h.length===3)h=h.split("").map(c=>c+c).join("");const n=parseInt(h,16);return((n>>16)&255)+","+((n>>8)&255)+","+(n&255)};
+  FUC={ink:v("--ink","#0d181c"),paper:v("--paper","#e7dcc2"),dim:v("--paper-dim","#9aa79f"),amber:v("--amber","#e2a94b"),water:v("--water","#5fb0c0"),rust:v("--rust","#b5583f")};
+  for(const k of Object.keys(FUC))FUC[k+"R"]=rgb(FUC[k]);return FUC}
+
+/* racha */
+const funMult=()=>Math.round((1+.1*clamp(FUN.R.k.length-2,0,3))*100)/100; // ×1,1 con 3 acciones distintas, hasta ×1,3 con 5
+const funFmt=m=>String(m).replace(".",",");
+function funAct(k){if(!started)return;const R=FUN.R;
+  if(k==="vapor"){if(R.k.length)R.t=Math.min(6,R.t+.6);return}
+  if(!R.k.length){R.acc=0;R.age=0}
+  R.t=6;if(R.k.includes(k))return;R.k.push(k);const n=R.k.length;
+  if(n>=2){R.pop=1;const f=392*Math.pow(2,[0,0,4,7,12,16][Math.min(5,n)]/12);tone("triangle",f,f,.35,.07,AU.ui);tone("sine",f*2,f*2,.22,.03,AU.ui,.06)}
+  if(n>=5)funBank(true)}
+function funBank(full){const R=FUN.R,n=R.k.length;
+  if(n>=3){const mu=funMult(),b=Math.min(8,Math.max(5,Math.round(R.acc*(mu-1)))),F=stF(),rec=n>F.best&&n>=3;if(n>F.best)F.best=n;
+    gain0(b);FUN.quiet=0;funLog("racha",b);funLog("n:racha",1);floats.push({x:P.x,y:P.y-alt()-rad()*.7,t:2.4,txt:(full?"¡Racha completa! ×":"Racha ×")+funFmt(mu)+": +"+b+" exp"+(rec?" · ¡récord!":"")});
+    [523,659,784,1047].slice(0,Math.min(4,n)).forEach((f,i)=>tone("triangle",f,f,.4,.08,AU.ui,i*.07));FEEL.pop=Math.max(FEEL.pop,.5);feedback("small")}
+  R.k=[];R.t=0;R.acc=0;R.pop=0}
+function funBreak(){const R=FUN.R;if(R.k.length>=3){floats.push({x:P.x,y:P.y-alt()-rad()*.7,t:1.8,txt:"racha perdida",bad:1});tone("sawtooth",330,150,.4,.04,AU.sfx)}
+  R.k=[];R.t=0;R.acc=0;R.pop=0}
+// la experiencia que se gana durante una racha se apunta para cobrarla multiplicada; el daño la rompe
+const gain0=gain;gain=function(n,x,y){if(started){if(FUN.R.k.length)FUN.R.acc+=n;if(n>=5)FUN.quiet=0}return gain0(n,x,y)};
+{const hurt0=hurt;hurt=function(f,s,x,y){if(started&&(f>0||s))funBreak();return hurt0(f,s,x,y)}}
+{const jh0=jefaHurt;jefaHurt=function(f,s){if(started)funBreak();return jh0(f,s)}}
+{const ev0=evaporate;evaporate=function(){funBreak();FUN.st.on=false;return ev0()}}
+
+/* efectos: quemaduras y ondas en el suelo, chispas y vapor en el aire */
+function funMark(x,y,r){if(FUN.marks.length>=40)FUN.marks.shift();FUN.marks.push({x,y,r,t:0,life:90,sd:Math.random()*TAU})}
+function funRing(x,y,r,col,life){if(FUN.rings.length<24)FUN.rings.push({x,y,r,col,t:0,life:life||.7})}
+function funPx(x,y,n,kind,sp){for(let i=0;i<n*AMAX&&FUN.px.length<160;i++){const a=Math.random()*TAU,v=rnd(.4,1)*(sp||120);
+  FUN.px.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v*.7-(kind===1?40:0),t:0,life:rnd(.5,1.1)*(kind===1?1.6:1),k:kind||0})}}
+function funBolt(tx,ty,amb){const Rd=rad(),sx=P.x+rnd(-.4,.4)*Rd,sy=P.y-alt()+Rd*.3,pts=[[sx,sy]];
+  for(let i=1;i<7;i++){const k=i/7;pts.push([lerp(sx,tx,k)+(Math.random()-.5)*40,lerp(sy,ty,k)+(Math.random()-.5)*16])}pts.push([tx,ty]);
+  bolts.push({pts,t:.35,x:tx,y:ty});funMark(tx,ty,amb?15:20);funRing(tx,ty,amb?80:120,funCol().amberR,.6);funPx(tx,ty,amb?5:7,1,90);
+  flash=Math.max(flash,amb?.1:.16);FEEL.trauma=Math.min(1,FEEL.trauma+(amb?.16:.22));
+  noiseShot(.12,"highpass",3200,900,amb?.2:.28,AU.sfx);noiseShot(rnd(1.2,1.8),"lowpass",rnd(260,380),50,amb?.4:.55,AU.sfx,.7,.05)}
+// un rayo que cae solo (o una rama del tuyo) hace cosas donde cae
+function funZap(x,y){for(let i=rivals.length-1;i>=0;i--){const c=rivals[i];if(dist(c.x,c.y,x,y)<c.r+60){c.m-=1;c.r=52+24*Math.sqrt(Math.max(1,c.m));c.stun=Math.max(c.stun,1.5);
+    if(c.m<=0){rivals.splice(i,1);cnt("rivK");gain(10,c.x,c.y);floats.push({x:c.x,y:c.y-80,t:2,txt:"rival deshecha"})}else floats.push({x:c.x,y:c.y-c.r-40,t:1.4,txt:"−1",bad:1})}}
+  for(const p of people)if(Math.abs(p.x-x)<140&&Math.abs(p.y-y)<140)p.wet=7;
+  if(dist(crows.x,crows.y,x,y)<500)scareCrows();
+  if(Math.random()<.3)for(const t of trees)if(t.st===0&&Math.abs(t.x-x)<45&&Math.abs(t.y-y)<45){t.st=1;t.fire=rnd(18,26);t.wet=0;floats.push({x,y:y-30,t:1.8,txt:"¡prende un árbol!",bad:1});break}}
+
+/* corrientes de viento */
+const FJN=24,FUTO={mar:"el mar",isla:"la isla perdida",lago:"el lago",rio:"el río",ciudad:"la ciudad",pueblo:"el pueblo",puerto:"el puerto",granja:"la granja",montana:"las montañas",bosque:"el bosque",prado:"la pradera"};
+function funJetMk(strong){const wa=Math.atan2(WGY,WGX);
+  for(let k=0;k<12;k++){const a=strong?Math.random()*TAU:wa+rnd(-.8,.8),L=strong?rnd(4400,5600):rnd(2200,3300),ca=Math.cos(a),sa=Math.sin(a);
+    const side=Math.random()<.5?1:-1,off=strong?rnd(170,420):rnd(280,640),back=L*rnd(.18,.4),x=P.x-sa*off*side-ca*back,y=P.y+ca*off*side-sa*back;
+    const j={x,y,a,L,amp:rnd(90,240)*(Math.random()<.5?-1:1),kk:rnd(.8,1.5),hw:strong?150:rnd(115,140),B:strong?265:rnd(175,215),life:strong?55:rnd(38,50),t:0,strong,
+      pts:[],tn:[],l2:[],ride:0,paid:0,mt:.5,shown:0};
+    let ok=true;for(let i=0;i<FJN;i++){const s=L*i/(FJN-1),w=j.amp*Math.sin(Math.PI*j.kk*s/L),px=x+ca*s-sa*w,py=y+sa*s+ca*w;
+      if(px<160||px>W-160||py<160||py>H-160){ok=false;break}j.pts.push([px,py])}
+    if(!ok)continue;
+    let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+    for(let i=0;i<FJN;i++){const p=j.pts[Math.max(0,i-1)],q=j.pts[Math.min(FJN-1,i+1)],l=dist(p[0],p[1],q[0],q[1])||1;j.tn.push([(q[0]-p[0])/l,(q[1]-p[1])/l]);
+      const r=j.pts[i];x0=Math.min(x0,r[0]);y0=Math.min(y0,r[1]);x1=Math.max(x1,r[0]);y1=Math.max(y1,r[1]);
+      if(i<FJN-1){const n=j.pts[i+1];j.l2.push((n[0]-r[0])**2+(n[1]-r[1])**2||1)}}
+    j.bb=[x0-j.hw,y0-j.hw,x1+j.hw,y1+j.hw];const e=j.pts[FJN-1];j.to=FUTO[zoneAt(e[0],e[1])]||"otra zona";return j}
+  return null}
+const funFade=j=>clamp(Math.min(j.t/2.5,(j.life-j.t)/3),0,1);
+// punto de la corriente más cercano a (x,y): distancia, centro, dirección y recorrido
+function funNear(j,x,y){const b=j.bb;if(x<b[0]||x>b[2]||y<b[1]||y>b[3])return null;let bd=1e18,bi=0,bu=0;
+  for(let i=0;i<FJN-1;i++){const p=j.pts[i],q=j.pts[i+1],u=clamp(((x-p[0])*(q[0]-p[0])+(y-p[1])*(q[1]-p[1]))/j.l2[i],0,1),cx=p[0]+(q[0]-p[0])*u,cy=p[1]+(q[1]-p[1])*u,d2=(x-cx)**2+(y-cy)**2;
+    if(d2<bd){bd=d2;bi=i;bu=u}}
+  const p=j.pts[bi],q=j.pts[bi+1],o=FUN.q,t0=j.tn[bi],t1=j.tn[bi+1];o.cx=p[0]+(q[0]-p[0])*bu;o.cy=p[1]+(q[1]-p[1])*bu;o.d=Math.sqrt(bd);
+  o.tx=lerp(t0[0],t1[0],bu);o.ty=lerp(t0[1],t1[1],bu);const l=Math.hypot(o.tx,o.ty)||1;o.tx/=l;o.ty/=l;o.s=(bi+bu)/(FJN-1)*j.L;return o}
+// fuerza de la corriente en un punto (0 fuera, 1 en el centro); deja el resto en FUN.q
+function funPush(j,x,y){const o=funNear(j,x,y);if(!o||o.d>=j.hw)return 0;const e=clamp(Math.min(o.s,j.L-o.s)/260,0,1);return(1-(o.d/j.hw)**2)*e*funFade(j)}
+function jetAt(j,s,lat){const u=clamp(s/j.L,0,1)*(FJN-1),i=Math.min(FJN-2,Math.floor(u)),f=u-i,p=j.pts[i],q=j.pts[i+1],t0=j.tn[i],t1=j.tn[i+1],tx=lerp(t0[0],t1[0],f),ty=lerp(t0[1],t1[1],f);
+  return[p[0]+(q[0]-p[0])*f-ty*lat,p[1]+(q[1]-p[1])*f+tx*lat]}
+function funAu(){if(FUN.au||!AU.ctx)return FUN.au;try{const c=AU.ctx,s=c.createBufferSource();s.buffer=AU.noise;s.loop=true;const f=c.createBiquadFilter();f.type="bandpass";f.frequency.value=500;f.Q.value=.8;
+  const g=c.createGain();g.gain.value=0;s.connect(f);f.connect(g);g.connect(AU.sfx);s.start();FUN.au={f,g}}catch(e){FUN.au=null}return FUN.au}
+function funJets(dt,Rd,A){const J=FUN.jets,F=stF();
+  FUN.jetT-=dt;if(FUN.jetT<=0){FUN.jetT=rnd(12,20);const near=J.filter(j=>dist(j.pts[FJN>>1][0],j.pts[FJN>>1][1],P.x,P.y)<2200).length;
+    if(J.length<3&&(near===0||(near===1&&Math.random()<.5))){const j=funJetMk(save.lvl>=2&&Math.random()<.3);if(j)J.push(j)}}
+  let best=0,bj=null;
+  for(let i=J.length-1;i>=0;i--){const j=J[i];j.t+=dt;if(j.t>=j.life){if(FUN.rideJ===j)funRideEnd(Rd,A);J.splice(i,1);continue}
+    // vapor que viaja por la corriente
+    j.mt-=dt;if(j.mt<=0){j.mt=2;if(motes.length<200&&funFade(j)>.5){const p=jetAt(j,rnd(0,j.L*.2),rnd(-.4,.4)*j.hw);motes.push({x:p[0],y:p[1],t:rnd(24,32),ph:Math.random()*6,fj:j})}}
+    const f=funPush(j,P.x,P.y),o=FUN.q;
+    if(f>0){const k=fm().windImm?.35:1,cen=Math.min(1,o.d/40)*40*f;
+      P.x=clamp(P.x+(o.tx*j.B*f*k+(o.cx-P.x)/(o.d||1)*cen)*dt,40,W-40);P.y=clamp(P.y+(o.ty*j.B*f*k+(o.cy-P.y)/(o.d||1)*cen)*dt,40,H-40);
+      if(f>best&&P.vx*o.tx+P.vy*o.ty>-30){best=f;bj=j}}
+    if(!j.shown&&inView(j.pts[FJN>>1][0],j.pts[FJN>>1][1],0)){j.shown=1;if(!FUN.jetHint&&!F.surf){FUN.jetHint=1;floats.push({x:P.x,y:P.y-A-Rd*.7,t:3.2,txt:"Una corriente de viento: ¡métete y vuela!"})}}
+    // nubes, rivales y vapor también se dejan llevar
+    for(const c of clouds){if(c.fixed)continue;const g=funPush(j,c.x,c.y);if(g>0){c.x+=FUN.q.tx*j.B*.75*g*dt;c.y+=FUN.q.ty*j.B*.75*g*dt}}
+    for(const c of rivals){const g=funPush(j,c.x,c.y);if(g>0){c.x=clamp(c.x+FUN.q.tx*j.B*.55*g*dt,60,W-60);c.y=clamp(c.y+FUN.q.ty*j.B*.55*g*dt,60,H-60)}}
+    for(const m of motes){if(m.fj!==j)continue;const g=funPush(j,m.x,m.y);if(g>0){m.x+=FUN.q.tx*j.B*.8*g*dt;m.y+=FUN.q.ty*j.B*.8*g*dt}}}
+  // surfear: dejarse llevar unos segundos cuenta y se premia al salir
+  if(bj&&best>.3){if(FUN.rideJ!==bj){if(FUN.rideJ)funRideEnd(Rd,A);FUN.rideJ=bj;FUN.ride=0;whoosh();FEEL.pop=Math.max(FEEL.pop,.4)}
+    FUN.out=0;FUN.ride+=dt;bj.ride+=dt;
+    if(FUN.ride>=3.5&&!bj.paid&&!bj.surfing){bj.surfing=1;floats.push({x:P.x,y:P.y-A-Rd*.6,t:1.8,txt:bj.strong?"¡corriente rápida hacia "+bj.to+"!":"¡surfeando!"});funAct("corriente")}}
+  else if(FUN.rideJ){FUN.out+=dt;if(FUN.out>.7)funRideEnd(Rd,A)}
+  const au=funAu();if(au){const v=FUN.rideJ&&FUN.out<.3?.05+.13*best:0;if(Math.abs(v-FUN.auG)>.01){FUN.auG=v;const t=AU.ctx.currentTime;au.g.gain.setTargetAtTime(v,t,.2);au.f.frequency.setTargetAtTime(380+(P.gs+(bj?bj.B*best:0))*1.6,t,.3)}}}
+function funRideEnd(Rd,A){const j=FUN.rideJ;FUN.rideJ=null;FUN.out=0;
+  if(j&&!j.paid&&FUN.ride>=3.5){j.paid=1;stF().surf++;const n=clamp(Math.round(3+FUN.ride*.35),5,8);gain(n);funLog("corriente",n);floats.push({x:P.x,y:P.y-A-Rd*.5,t:2,txt:"buena corriente: +"+Math.round(n*(save.karma>=15?1.25:1))+" exp",xp:1})}
+  FUN.ride=0}
+
+// estela de vapor: una fila de motas por delante, para cogerlas de una pasada
+function funTrail(Rd){FUN.trailT=time;const sp=Math.hypot(AN.vx,AN.vy),a=sp>40?Math.atan2(AN.vy,AN.vx)+rnd(-.5,.5):Math.random()*TAU,r=Rd+rnd(260,420),bend=rnd(-.5,.5);
+  let x=P.x+Math.cos(a)*r,y=P.y+Math.sin(a)*r,h=a+rnd(-.6,.6);
+  for(let i=0;i<9;i++){if(x<60||x>W-60||y<60||y>H-60)break;motes.push({x,y,t:rnd(26,32),ph:Math.random()*6});h+=bend*.18;x+=Math.cos(h)*58;y+=Math.sin(h)*58}}
+
+/* sucesos cerca de la nube */
+const FEVN={frente:"Frente de nubes",fuego:"¡Fuego!",banco:"Banco de vapor",herida:"Rival herida"};
+function funEvMk(k){const Rd=rad();
+  if(k==="frente"){const a=Math.random()*TAU,ca=Math.cos(a),sa=Math.sin(a),qx=P.x+rnd(-420,420),qy=P.y+rnd(-320,320),sx=qx-ca*1150,sy=qy-sa*1150;
+    if(sx<200||sx>W-200||sy<200||sy>H-200)return null;const cl=[];
+    for(let i=0;i<5;i++){const o=(i-2)*130,b=-Math.abs(i-2)*60,c=mkCloud(sx-sa*o+ca*b,sy+ca*o+sa*b,{m:1,age:2.6,life:90,fv:1});c.r=rnd(40,47);clouds.push(c);cl.push(c)}
+    return{k,n:FEVN[k],ann:"Pasa un frente de nubes: ¡cómetelo!",t:42,t0:42,ca,sa,v:rnd(95,112),cl,ate:0,ic:"cloud"}}
+  if(k==="fuego"){let best=null;for(let i=0;i<90;i++){const t=trees[(Math.random()*trees.length)|0];if(!t||t.st!==0)continue;const d=dist(t.x,t.y,P.x,P.y);
+      if(d>550&&d<1250){best=t;if(zoneAt(t.x,t.y)==="bosque")break}}
+    if(!best)return null;best.st=1;best.fire=rnd(34,40);best.wet=0;
+    const pts=[[best.x+rnd(-80,80),best.y-900]];for(let i=1;i<7;i++){const q=i/7;pts.push([lerp(pts[0][0],best.x,q)+(Math.random()-.5)*50,lerp(pts[0][1],best.y,q)])}pts.push([best.x,best.y]);
+    bolts.push({pts,t:.45,x:best.x,y:best.y});funMark(best.x,best.y,18);flash=Math.max(flash,.18);noiseShot(.15,"highpass",3000,800,.18,AU.sfx);noiseShot(2,"lowpass",300,45,.4,AU.sfx,.7,.1);
+    const grp=trees.filter(t=>Math.abs(t.x-best.x)<420&&Math.abs(t.y-best.y)<420);
+    return{k,n:FEVN[k],ann:"¡Un rayo seco prende el bosque! Apágalo",t:45,t0:45,x:best.x,y:best.y,grp,ext0:save.ext,ic:"fire"}}
+  if(k==="banco"){let cx,cy,ann="Un banco de vapor: pasa por encima";const nw=nearWater(),dawn=tday>.9||tday<.05;
+    if(dawn&&coastY(P.x)-P.y<2200){cx=clamp(P.x+rnd(-500,500),200,W-200);cy=Math.min(H-200,coastY(cx)+rnd(140,320));ann="Bruma del amanecer sobre el mar: ¡vapor!"}
+    else if(P.w<cap()*.35&&nw.d>500){const k=clamp(rnd(500,800)/nw.d,.3,.8);cx=lerp(P.x,nw.x,k)+rnd(-150,150);cy=lerp(P.y,nw.y,k)+rnd(-150,150);ann="Vapor de camino al agua: ¡bébetelo!"}
+    else if(nw.d<1400&&nw.d>300){cx=nw.x;cy=nw.y}
+    else{const a=Math.random()*TAU,r=rnd(800,1150);cx=clamp(P.x+Math.cos(a)*r,200,W-200);cy=clamp(P.y+Math.sin(a)*r,200,H-200)}
+    if(dist(cx,cy,P.x,P.y)<Rd+250)return null;const ms=[];
+    for(let i=0;i<20;i++){const a=Math.random()*TAU,r=Math.sqrt(Math.random())*150,m={x:cx+Math.cos(a)*r,y:cy+Math.sin(a)*r*.8,t:rnd(40,46),ph:Math.random()*6,fb:1};motes.push(m);ms.push(m)}
+    return{k,n:dawn&&ann[0]==="B"?"Bruma del amanecer":FEVN[k],ann,t:44,t0:44,x:cx,y:cy,ms,got:0,chk:0,ic:"mote"}}
+  if(k==="herida"){const m=Math.max(1,P.m-1-(Math.random()<.5?1:0));if(m>=P.m)return null;const a=Math.random()*TAU,r=rnd(950,1200);
+    const c={x:clamp(P.x+Math.cos(a)*r,100,W-100),y:clamp(P.y+Math.sin(a)*r,100,6200),m,r:52+24*Math.sqrt(m),pf:mkPuffs(7),h:a,ph:Math.random()*6,stun:0,jg:1,fh:1};rivals.push(c);
+    return{k,n:FEVN[k],ann:"Una rival herida huye: ¡dale caza!",t:45,t0:45,c,drip:0,ic:"prey"}}
+  return null}
+function funEvStart(){const opts=[],add=(k,w)=>{if(k!==FUN.evLast)for(let i=0;i<w;i++)opts.push(k)};
+  const sed=P.w<cap()*.35;add("frente",sed?1:3);add("banco",sed?6:warm>0||dark>.4?3:2);if(save.lvl>=2&&!fm().noRain&&season!==3)add("fuego",2);if(save.lvl>=3&&P.m>=3&&!fm().hidden)add("herida",2);
+  for(let i=0;i<4&&opts.length;i++){const k=opts[(Math.random()*opts.length)|0],e=funEvMk(k);
+    if(e){FUN.ev=e;FUN.evLast=k;funLog("n:"+k,1);floats.push({x:P.x,y:P.y-alt()-rad()*.7,t:3.2,txt:e.ann});tone("triangle",587,587,.3,.06,AU.ui);tone("triangle",880,880,.45,.06,AU.ui,.12);return}}
+  FUN.evT=8}
+function funEvEnd(ok,txt,xp){const e=FUN.ev;FUN.ev=null;funLog((ok?"ok:":"no:")+e.k,1);FUN.evT=rnd(28,42);const A=alt(),Rd=rad();
+  if(ok){stF().ev++;if(xp){gain(xp);funLog("suceso:"+e.k,xp)}funAct("suceso");tone("triangle",659,659,.35,.08,AU.ui);tone("triangle",988,988,.5,.08,AU.ui,.1);tone("triangle",1319,1319,.6,.06,AU.ui,.2);feedback("small")}
+  if(txt)floats.push({x:P.x,y:P.y-A-Rd*.6,t:2.4,txt:txt+(ok&&xp?": +"+Math.round(xp*(save.karma>=15?1.25:1))+" exp":""),bad:ok?0:1,xp:ok?1:0});return e}
+// dónde está el suceso ahora (para la flecha del borde); null si ya no tiene sitio
+function funEvPos(e){if(e.k==="frente"){let x=0,y=0,n=0;for(const c of e.cl)if(!c.fl){x+=c.x;y+=c.y;n++}return n?[x/n,y/n]:null}
+  if(e.k==="fuego"){let b=null,bd=1e9;for(const t of e.grp)if(t.st===1){const d=dist(t.x,t.y,P.x,P.y);if(d<bd){bd=d;b=t}}return b?[b.x,b.y]:[e.x,e.y]}
+  if(e.k==="banco")return[e.x,e.y];if(e.k==="herida")return[e.c.x,e.c.y-e.c.r*.75-50];return null}
+function funEvUpdate(dt,Rd,A){const e=FUN.ev;
+  if(!e){if(!jefa){FUN.evT-=dt;if(FUN.evT<=0)funEvStart()}return}
+  e.t-=dt;
+  if(e.k==="frente"){let alive=0;for(const c of e.cl){if(c.fl)continue;const i=clouds.indexOf(c);
+      if(i<0){c.fl=dist(c.x,c.y,P.x,P.y)<(Rd*.8+c.r*.5)*(fm().eat||1)+90?1:2;if(c.fl===1){e.ate++;if(e.ate<4)floats.push({x:P.x,y:P.y-A-Rd*.4,t:1.4,txt:e.ate+" de 4"})}continue}
+      alive++;c.x+=e.ca*e.v*dt;c.y+=e.sa*e.v*dt}
+    if(e.ate>=4)return funEvEnd(true,"¡Frente devorado!",7);
+    if(!alive||e.t<=0){for(const c of e.cl)c.fv=0;return funEvEnd(false,e.ate?"El frente se aleja":"")}}
+  else if(e.k==="fuego"){let burn=0;for(const t of e.grp)if(t.st===1)burn++;
+    if(!burn)return save.ext>e.ext0?(karma(2),funEvEnd(true,"¡Incendio apagado a tiempo!",8)):funEvEnd(false,"");
+    if(e.t<=0)return funEvEnd(false,"El fuego se te escapa")}
+  else if(e.k==="banco"){e.chk-=dt;if(e.chk<=0){e.chk=.2;let n=0,x=0,y=0;for(let i=e.ms.length-1;i>=0;i--){const m=e.ms[i];if(motes.indexOf(m)<0){if(m.t>0)e.got++;e.ms.splice(i,1)}else{n++;x+=m.x;y+=m.y}}
+      if(n){e.x=x/n;e.y=y/n}
+      if(e.got>=14)return funEvEnd(true,e.n==="Bruma del amanecer"?"¡Te has bebido la bruma!":"¡Banco de vapor!",6);
+      if(!n||e.t<=0)return funEvEnd(false,e.got>=8?"El vapor se dispersa":"")}}
+  else if(e.k==="herida"){const c=e.c;if(rivals.indexOf(c)<0)return funEvEnd(true,"¡Cazada!",7);
+    const d=dist(c.x,c.y,P.x,P.y)||1;if(d<900&&c.stun<=0){c.x+=(P.x-c.x)/d*45*dt;c.y+=(P.y-c.y)/d*45*dt} // herida: no puede huir a toda velocidad
+    e.drip-=dt;if(e.drip<=0){e.drip=1.2;if(motes.length<220)motes.push({x:c.x+rnd(-20,20),y:c.y+rnd(-15,15),t:16,ph:Math.random()*6})}
+    if(e.t<=0){rivals.splice(rivals.indexOf(c),1);for(let i=0;i<8;i++)puff(c.x+rnd(-1,1)*c.r*.6,c.y-c.r*.75-50+rnd(-.4,.4)*c.r,rnd(-60,60),rnd(-50,10),c.r*.25,1);
+      floats.push({x:c.x,y:c.y-c.r-60,t:1.8,txt:"se escapa"});return funEvEnd(false,"")}}}
+
+/* maniobras: rozar a una rival grande y esquivar la avioneta por los pelos */
+function funMoves(dt,Rd,A){const F=stF();
+  for(const c of rivals){if(c.m<=P.m||c.fh){c.fG=c.fT=c.fC=0;continue}const d=dist(c.x,c.y,P.x,P.y),reach=Rd*.6+c.r*.6;
+    if(d<reach+170)c.fC=1;else if(c.fC&&d>1300){c.fC=0;if(time-(c.fEt||-99)>30){c.fEt=time;gain(5);funLog("escapada",5);floats.push({x:P.x,y:P.y-A-Rd*.6,t:1.8,txt:"¡te libraste! +"+Math.round(5*(save.karma>=15?1.25:1))+" exp",xp:1});funAct("huida")}}
+    if(d<reach)c.fT=1;else if(d<reach+75&&!c.fG&&!c.fT){c.fG=1;FEEL.trauma=Math.min(1,FEEL.trauma+.12);tone("sine",180,120,.3,.06,AU.sfx)}
+    if(d>reach+320){if(c.fG&&!c.fT&&time-(c.fGt||-99)>20){c.fGt=time;F.graze++;gain(5);funLog("roce",5);floats.push({x:P.x,y:P.y-A-Rd*.6,t:1.8,txt:"¡rozando! +"+Math.round(5*(save.karma>=15?1.25:1))+" exp",xp:1});funAct("roce");whoosh()}c.fG=c.fT=0}}
+  const sp=seedPlane;if(sp){FUN.sp=sp;const d=dist(sp.x,sp.y,P.x,P.y-A);
+    if(!sp.hit&&!sp.flee&&!sp.fNM&&sp.fPrev!==undefined&&d>sp.fPrev&&sp.fMin<Rd*1.2){sp.fNM=1;F.close++;FEEL.hsEnd=Math.max(FEEL.hsEnd,performance.now()+170);whoosh();
+      gain(6);funLog("pelos",6);floats.push({x:P.x,y:P.y-A-Rd*.6,t:2,txt:"¡por los pelos! +"+Math.round(6*(save.karma>=15?1.25:1))+" exp",xp:1});funAct("quiebro")}
+    sp.fMin=Math.min(sp.fMin||1e9,d);sp.fPrev=d}}
+
+/* tormenta desatada */
+function funStorm(dt,Rd,A,C){const S=FUN.st,ok=stormy()&&P.rain&&P.m>=5;
+  if(ok){S.hold+=dt;S.off=0}else{S.hold=0;if(S.on)S.off+=dt}
+  if(!S.on&&S.hold>1.2){S.on=true;S.t=0;S.n=0;S.amb=1.2;floats.push({x:P.x,y:P.y-A-Rd*.8,t:2.6,txt:"¡Tormenta desatada!"});thunder(true);feedback("large",P.x,P.y-A);FEEL.glow=1;flash=Math.max(flash,.3);funAct("tormenta")}
+  if(!S.on)return;
+  if(S.off>1.5){S.on=false;if(S.t>6){const b=Math.min(10,5+Math.floor(S.n/3));stF().storm++;gain(b);funLog("tormenta",b);floats.push({x:P.x,y:P.y-A-Rd*.6,t:2.4,txt:"Tormenta de "+S.n+" rayos: +"+Math.round(b*(save.karma>=15?1.25:1))+" exp",xp:1})}return}
+  S.t+=dt;P.w=Math.max(0,P.w-C*.012*dt);
+  S.amb-=dt;if(S.amb<=0){S.amb=tornado?rnd(.9,1.5):rnd(1.8,3.2);let tx,ty,tg=null;
+    for(const c of rivals)if(dist(c.x,c.y,P.x,P.y)<Rd*1.8+c.r&&Math.random()<.6){tg=c;break}
+    if(tg){tx=tg.x;ty=tg.y}else if(tornado&&Math.random()<.5){tx=tornado.x+rnd(-90,90);ty=tornado.y+rnd(-60,60)}else{const a=Math.random()*TAU,r=Rd*rnd(.9,1.7);tx=P.x+Math.cos(a)*r;ty=P.y+Math.sin(a)*r*.8}
+    funBolt(tx,ty,1);funZap(tx,ty);S.n++}}
+
+/* actualización: una llamada por paso desde update() */
+function funUpdate(dt,z,Rd,A,C){
+  if(!started){return}
+  const R=FUN.R,c0=FUN.c,c1={eat:ct("eat"),mot:save.motes,ray:ct("ray"),prey:ct("rivE")+ct("rivK"),ext:save.ext,fld:ct("fields"),hail:ct("hail"),dodge:stJ().dodge};FUN.c=c1;
+  // racha: tiempo que queda, y cobro al acabarse
+  if(R.k.length){R.t-=dt;R.age+=dt;if(R.t<=0||R.age>32)funBank(false)}R.pop=Math.max(0,R.pop-dt*3);FUN.glint=Math.max(0,FUN.glint-dt*4);
+  if(c0){
+    if(c1.eat>c0.eat){funAct("nube");FEEL.trauma=Math.min(1,FEEL.trauma+.08);funPx(P.x,P.y-A,10,0,170);tone("sine",150,70,.2,.09,AU.sfx)}
+    if(c1.mot>c0.mot){funAct("vapor");FUN.glint=1}
+    if(c1.ray>c0.ray){funAct("rayo");const b=bolts[bolts.length-1];if(b){funMark(b.x,b.y,22);funRing(b.x,b.y,150,funCol().amberR,.6);funPx(b.x,b.y,9,1,110);
+        if(FUN.st.on){FUN.st.n++;for(let i=0;i<2;i++){const a=Math.random()*TAU,r=rnd(110,220),fx=b.x+Math.cos(a)*r,fy=b.y+Math.sin(a)*r*.8;funBolt(fx,fy,0);funZap(fx,fy)}}}}
+    if(c1.prey>c0.prey)funAct("presa");
+    if(c1.ext>c0.ext){funAct("apagar");const [wx,wy]=windAt(P.x,P.y);funPx(P.x+wx*.3,P.y+wy*.3,6,2,60);noiseShot(.6,"highpass",5200,2200,.06,AU.sfx)}
+    if(c1.fld>c0.fld)funAct("riego");
+    if(c1.hail>c0.hail)funAct("granizo");
+    if(c1.dodge>c0.dodge)funAct("quiebro")}
+  // empezar y dejar de llover se notan
+  if(P.rain!==FUN.rain){FUN.rain=P.rain;const [wx,wy]=windAt(P.x,P.y),rx=P.x+wx*.3,ry=P.y+wy*.3;
+    if(P.rain){FEEL.pop=Math.max(FEEL.pop,.45);noiseShot(.5,"lowpass",1700,380,.13,AU.sfx);funRing(rx,ry,Rd*.95,funCol().waterR,.55);
+      for(let i=0;i<7;i++){const a=i/7*TAU;puff(P.x+Math.cos(a)*Rd*.6,P.y-A+Rd*.3+Math.sin(a)*Rd*.2,Math.cos(a)*50,30+Math.sin(a)*20,Rd*rnd(.12,.18),rnd(.5,.8))}}
+    else{for(let i=0;i<4;i++){const a=Math.random()*TAU;puff(P.x+Math.cos(a)*Rd*.5,P.y-A+Math.sin(a)*Rd*.3,Math.cos(a)*40,-25,Rd*.13,.6)}tone("sine",420,700,.15,.03,AU.sfx)}}
+  if(!!tornado!==FUN.tor){FUN.tor=!!tornado;if(tornado)funAct("tornado")}
+  // lo que pasa bajo la lluvia cuenta para la racha
+  FUN.pollT-=dt;if(FUN.pollT<=0){FUN.pollT=.3;
+    if(P.rain){const [wx,wy]=windAt(P.x,P.y),rx=P.x+wx*.3,ry=P.y+wy*.3;
+      if(fields.some(f=>f.st===1&&dist(clamp(rx,f.x,f.x+f.w),clamp(ry,f.y,f.y+f.h),rx,ry)<Rd*.8))funAct("riego");
+      if(people.some(p=>p.wet>6.6&&Math.abs(p.x-rx)<Rd)||kids.some(k=>k.wet>5.6&&Math.abs(k.x-rx)<Rd)||cows.some(k=>k.wet>5.6&&Math.abs(k.x-rx)<Rd)||sheep.some(k=>k.wet>5.6&&Math.abs(k.x-rx)<Rd)||dogs.some(k=>k.wet>5.6&&Math.abs(k.x-rx)<Rd))funAct("mojar")}}
+  // ristra de vapor: muchas motas seguidas (las corrientes y los bancos las ponen en fila) se pagan al acabar
+  if(combo>FUN.mc)FUN.mc=combo;else if(combo===0&&FUN.mc){if(FUN.mc>=7){const n=FUN.mc>=12?6:5;gain(n);funLog("ristra",n);
+    floats.push({x:P.x,y:P.y-A-Rd*.55,t:1.8,txt:"ristra de "+FUN.mc+" motas: +"+Math.round(n*(save.karma>=15?1.25:1))+" exp",xp:1});tone("sine",1046,1568,.18,.05,AU.sfx)}FUN.mc=0}
+  // director de ritmo: si llevas un rato sin nada destacable, acerca algo (un suceso, una corriente o una estela de vapor)
+  FUN.quiet+=dt;
+  if(FUN.quiet>15&&!FUN.ev&&!jefa&&FUN.evT>1.5)FUN.evT=1.5;
+  if(FUN.quiet>12&&FUN.jetT>1&&!FUN.jets.some(j=>dist(j.pts[FJN>>1][0],j.pts[FJN>>1][1],P.x,P.y)<1600))FUN.jetT=1;
+  if(FUN.quiet>13&&time-FUN.trailT>14&&motes.length<200)funTrail(Rd);
+  funJets(dt,Rd,A);funEvUpdate(dt,Rd,A);funMoves(dt,Rd,A);funStorm(dt,Rd,A,C);
+  // partículas y marcas
+  for(let i=FUN.px.length-1;i>=0;i--){const p=FUN.px[i];p.t+=dt;if(p.t>=p.life){FUN.px.splice(i,1);continue}const f=Math.exp(-3*dt);p.vx*=f;p.vy*=f;if(p.k===1)p.vy-=30*dt;if(p.k===2)p.vy-=40*dt;p.x+=p.vx*dt;p.y+=p.vy*dt}
+  for(let i=FUN.rings.length-1;i>=0;i--){const r=FUN.rings[i];r.t+=dt;if(r.t>=r.life)FUN.rings.splice(i,1)}
+  for(let i=FUN.marks.length-1;i>=0;i--){const m=FUN.marks[i];m.t+=dt;if(m.t>=m.life)FUN.marks.splice(i,1)}
+}
+
+/* dibujo */
+// suelo: quemaduras de rayo, ondas y la sombra de la tormenta (debajo de casas, gente y árboles)
+{const dp0=drawPuddles;drawPuddles=function(vis){dp0(vis);funGround(vis)}}
+function funGround(vis){if(!FUN.marks.length&&!FUN.rings.length&&!FUN.st.on)return;const C=funCol();
+  if(FUN.st.on){const r=rad()*1.7;ctx.fillStyle="rgba("+C.inkR+","+(.14+.04*Math.sin(time*3))+")";ctx.beginPath();ctx.ellipse(P.x,P.y,r,r*.7,0,0,TAU);ctx.fill()}
+  for(const m of FUN.marks)if(vis(m.x,m.y,40)){const a=Math.min(1,(m.life-m.t)/15);ctx.fillStyle="rgba("+C.inkR+","+(.42*a)+")";ctx.beginPath();
+    for(let i=0;i<5;i++){const q=m.sd+i*1.26,rr=m.r*(.55+.3*Math.sin(q*3)),x=m.x+Math.cos(q)*m.r*.45,y=m.y+Math.sin(q)*m.r*.3;ctx.moveTo(x+rr,y);ctx.ellipse(x,y,rr,rr*.6,0,0,TAU)}ctx.fill();
+    if(m.t<2.5){ctx.globalCompositeOperation="lighter";ctx.globalAlpha=(1-m.t/2.5)*.8;glow(GF,m.x,m.y,m.r*2.2);ctx.globalCompositeOperation="source-over";ctx.globalAlpha=1}}
+  for(const r of FUN.rings)if(vis(r.x,r.y,r.r)){const k=r.t/r.life,e=1-(1-k)*(1-k),rr=r.r*(.25+.75*e);ctx.strokeStyle="rgba("+r.col+","+(.6*(1-k))+")";ctx.lineWidth=3*(1-k)+1;ctx.beginPath();ctx.ellipse(r.x,r.y,rr,rr*.55,0,0,TAU);ctx.stroke()}}
+function funIcon(g,ic,x,y,s,C){g.save();g.translate(x,y);
+  if(ic==="cloud"||ic==="prey"){g.fillStyle=ic==="prey"?"rgba("+C.dimR+",1)":C.paper;g.beginPath();g.arc(-s*.35,s*.1,s*.42,0,TAU);g.arc(s*.3,s*.05,s*.5,0,TAU);g.arc(0,-s*.25,s*.45,0,TAU);g.fill();
+    if(ic==="prey"){g.fillStyle=C.rust;g.beginPath();g.moveTo(0,s*.95);g.lineTo(-s*.28,s*.5);g.lineTo(s*.28,s*.5);g.fill()}}
+  else if(ic==="fire"){g.fillStyle=C.rust;g.beginPath();g.moveTo(0,-s);g.quadraticCurveTo(s*.95,0,s*.55,s*.65);g.quadraticCurveTo(0,s,-s*.55,s*.65);g.quadraticCurveTo(-s*.95,0,0,-s);g.fill();
+    g.fillStyle=C.amber;g.beginPath();g.arc(0,s*.35,s*.32,0,TAU);g.fill()}
+  else if(ic==="mote"){g.fillStyle=C.water;for(let i=0;i<5;i++){const a=i*1.26+time;g.beginPath();g.arc(Math.cos(a)*s*.55,Math.sin(a)*s*.55,s*.22,0,TAU);g.fill()}g.fillStyle=C.paper;g.beginPath();g.arc(0,0,s*.3,0,TAU);g.fill()}
+  else if(ic==="wind"){g.strokeStyle=C.paper;g.lineWidth=s*.22;g.lineCap="round";g.beginPath();for(const o of [-.45,.15]){g.moveTo(-s*.7+o*s,-s*.6);g.lineTo(o*s+s*.1,0);g.lineTo(-s*.7+o*s,s*.6)}g.stroke()}
+  g.restore()}
+function funText(g,t,x,y,col,C,sz){g.font="700 "+(sz||12)+"px 'Alegreya Sans',sans-serif";g.textAlign="center";g.textBaseline="middle";g.lineJoin="round";g.lineWidth=3.5;g.strokeStyle=C.ink;g.strokeText(t,x,y);g.fillStyle=col;g.fillText(t,x,y)}
+let funRectT=0;
+function funDraw(){if(FUN.au&&paused&&FUN.auG>0){FUN.auG=0;FUN.au.g.gain.setTargetAtTime(0,AU.ctx.currentTime,.1)} // en pausa, el silbido de la corriente se calla
+  if(!started)return;const C=funCol(),Rd=rad(),A=alt();
+  // corrientes: haces de rayas que fluyen en su dirección
+  ctx.lineCap="round";
+  for(const j of FUN.jets){const fa=funFade(j),b=j.bb;if(fa<=0||b[2]<X0||b[0]>X0+VW||b[3]<Y0||b[1]>Y0+VH)continue;
+    const sp=90,dash=46,off=(time*j.B*.6)%sp,zw=1/zoom;
+    // el pasillo: una banda suave que marca por dónde va
+    ctx.fillStyle="rgba("+C.waterR+",1)";ctx.globalAlpha=fa*.1;ctx.beginPath();
+    for(let i=0;i<=20;i++){const s=j.L*i/20,p=jetAt(j,s,Math.sqrt(Math.sin(Math.PI*i/20))*j.hw*.9);i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1])}
+    for(let i=20;i>=0;i--){const s=j.L*i/20,p=jetAt(j,s,-Math.sqrt(Math.sin(Math.PI*i/20))*j.hw*.9);ctx.lineTo(p[0],p[1])}ctx.fill();
+    ctx.strokeStyle="rgba("+C.paperR+",1)";
+    for(let li=0;li<5;li++){const lo=(li-2)/2*.78;ctx.globalAlpha=fa*(j.strong?.62:.5)*(1-.4*Math.abs(lo));ctx.lineWidth=(li===2?3:2.2)*zw;ctx.beginPath();
+      for(let s=off+li*19-sp;s<j.L;s+=sp){const s0=Math.max(0,s),s1=Math.min(j.L,s+dash);if(s1<=s0)continue;const w=Math.sqrt(Math.sin(Math.PI*clamp(s0/j.L,0,1)))*j.hw*lo,p=jetAt(j,s0,w);
+        if(!inView(p[0],p[1],80))continue;const q=jetAt(j,s1,w);ctx.moveTo(p[0],p[1]);ctx.lineTo(q[0],q[1])}ctx.stroke()}
+    // flechas suaves por el centro
+    ctx.globalAlpha=fa*.55;ctx.lineWidth=3.2*zw;ctx.beginPath();const off2=(time*j.B*.35)%420;
+    for(let s=off2+120;s<j.L-120;s+=420){const p=jetAt(j,s,0);if(!inView(p[0],p[1],60))continue;const u=clamp(s/j.L,0,1)*(FJN-1),i=Math.min(FJN-2,Math.floor(u)),t=j.tn[i],nx=-t[1],ny=t[0];
+      ctx.moveTo(p[0]-t[0]*16+nx*12,p[1]-t[1]*16+ny*12);ctx.lineTo(p[0]+t[0]*6,p[1]+t[1]*6);ctx.lineTo(p[0]-t[0]*16-nx*12,p[1]-t[1]*16-ny*12)}ctx.stroke()}
+  ctx.globalAlpha=1;ctx.lineCap="butt";
+  // chispas, ascuas y vapor
+  if(FUN.px.length){ctx.globalCompositeOperation="lighter";for(const p of FUN.px){const k=p.t/p.life;ctx.globalAlpha=(1-k)*(p.k===1?.9:.7);glow(p.k===1?GF:GW,p.x,p.y,p.k===1?7:p.k===2?12:9)}ctx.globalCompositeOperation="source-over";ctx.globalAlpha=1}
+  if(FUN.glint>0){ctx.globalCompositeOperation="lighter";ctx.globalAlpha=FUN.glint*.25;glow(GW,P.x,P.y-A,Rd*.9);ctx.globalCompositeOperation="source-over";ctx.globalAlpha=1}
+  // tormenta: cortinas de lluvia oscuras alrededor de la nube
+  if(FUN.st.on&&!cfg.calm){const sl=clamp(WGX*.08,-14,14);ctx.strokeStyle="rgba("+C.waterR+",.35)";ctx.lineWidth=1.4;ctx.beginPath();
+    for(let i=0;i<46;i++){const a=i*2.39996+time*.3,r=Rd*(.6+.9*((i*37)%100)/100),x=P.x+Math.cos(a)*r,y=P.y+Math.sin(a)*r*.7,ph=(time*3.2+i*.37)%1,h=A*.9;
+      ctx.moveTo(x-sl*(1-ph)*h/60,y-h*(1-ph));ctx.lineTo(x-sl*(1-ph)*h/60-sl*.3,y-h*(1-ph)+20)}ctx.stroke()}
+  // etiqueta sobre la rival herida
+  const e=FUN.ev;
+  // el banco de vapor brilla un poco, para verlo de lejos
+  if(e&&e.k==="banco"&&inView(e.x,e.y,300)){ctx.globalCompositeOperation="lighter";ctx.globalAlpha=.16+.05*Math.sin(time*2);glow(GW,e.x,e.y,260);ctx.globalCompositeOperation="source-over";ctx.globalAlpha=1}
+  if(e&&e.k==="herida"&&inView(e.c.x,e.c.y,300)){ctx.font="700 "+Math.round(13/zoom)+"px 'Alegreya Sans',sans-serif";ctx.textAlign="center";ctx.fillStyle=C.amber;ctx.fillText("herida",e.c.x,e.c.y-e.c.r*1.5-50-20/zoom)}
+  // pantalla: aviso del suceso y de las corrientes rápidas, y la racha
+  ctx.save();ctx.setTransform(dpr,0,0,dpr,0,0);
+  const zz=zoom*(1+.035*Math.sin(FEEL.punch*Math.PI)),x0=cam.x-vw/2/zz+FEEL.ox/zz,y0=cam.y-vh/2/zz+FEEL.oy/zz,toS=(x,y)=>[(x-x0)*zz,(y-y0)*zz],inV=(x,y,m)=>x>-m&&x<vw+m&&y>-m&&y<vh+m;
+  funRectT--;if(funRectT<=0){funRectT=30;hRectsUpd()}
+  const S=FUN.st;S.k=clamp((S.k||0)+(S.on?.03:-.02),0,1);
+  if(S.k>0){const g=ctx.createRadialGradient(vw/2,vh/2,Math.min(vw,vh)*.25,vw/2,vh/2,Math.hypot(vw,vh)*.6);g.addColorStop(0,"rgba("+C.inkR+",0)");g.addColorStop(1,"rgba("+C.inkR+","+(.5*S.k)+")");ctx.fillStyle=g;ctx.fillRect(0,0,vw,vh)}
+  const underHud=(x,y)=>hRects.some(r=>x>r[0]&&x<r[2]&&y>r[1]&&y<r[3]);
+  const mark=(wx,wy,ic,label,col,urgent)=>{const [sx,sy]=toS(wx,wy),pu=.5+.5*Math.sin(time*(urgent?7:4));ctx.font="700 12px 'Alegreya Sans',sans-serif";const tw=ctx.measureText(label).width/2+8;
+    if(inV(sx,sy,-20)&&!underHud(sx,sy)){ctx.globalAlpha=.55+.35*pu;ctx.strokeStyle=col;ctx.lineWidth=2;ctx.setLineDash([6,6]);ctx.lineDashOffset=-time*16;ctx.beginPath();ctx.arc(sx,sy,24+6*pu,0,TAU);ctx.stroke();ctx.setLineDash([]);
+      ctx.globalAlpha=1;funText(ctx,label,clamp(sx,tw,vw-tw),sy-42-4*pu,col,C)}
+    else{const q=hEdge(sx,sy),ex=q[0],ey=q[1],a=q[2];ctx.globalAlpha=.92;ctx.fillStyle=C.ink;ctx.beginPath();ctx.arc(ex,ey,15,0,TAU);ctx.fill();ctx.globalAlpha=1;ctx.strokeStyle=col;ctx.lineWidth=2;ctx.stroke();
+      funIcon(ctx,ic,ex,ey,8,C);ctx.save();ctx.translate(ex+Math.cos(a)*21,ey+Math.sin(a)*21);ctx.rotate(a);ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(6,0);ctx.lineTo(-4,5);ctx.lineTo(-4,-5);ctx.fill();ctx.restore();
+      const lx=clamp(ex-Math.cos(a)*34,tw,vw-tw),ly=clamp(ey-Math.sin(a)*26,14,vh-14);funText(ctx,label,lx,ly,col,C,11)}};
+  if(e&&!hCard){const p=funEvPos(e);if(p)mark(p[0],p[1],e.ic,e.n+" · "+Math.ceil(e.t)+" s",e.t<12?C.amber:e.k==="fuego"?C.amber:C.paper,e.t<12)}
+  for(const j of FUN.jets)if(j.strong&&funFade(j)>.3&&!FUN.rideJ){const p=jetAt(j,j.L*.1,0),[sx,sy]=toS(p[0],p[1]);if(!inV(sx,sy,-20)&&dist(p[0],p[1],P.x,P.y)<2600&&!hCard)mark(p[0],p[1],"wind","Corriente hacia "+j.to,C.paper,false)}
+  // racha: una píldora discreta bajo la nube, con lo encadenado y el tiempo que queda
+  const R=FUN.R;if(R.k.length>=2){const [sx,sy0]=toS(P.x,P.y-A+Rd*.62),sy=Math.min(vh-90,sy0+18),pop=1+.25*backOut(1-R.pop)*R.pop,mu=funMult(),w=Math.max(128,34+R.k.length*44);
+    ctx.translate(sx,sy);ctx.scale(pop,pop);ctx.globalAlpha=.9;ctx.fillStyle=C.ink;ctx.beginPath();ctx.roundRect?ctx.roundRect(-w/2,-14,w,28,14):ctx.rect(-w/2,-14,w,28);ctx.fill();ctx.globalAlpha=1;
+    ctx.strokeStyle="rgba("+C.amberR+",.8)";ctx.lineWidth=1.5;ctx.stroke();
+    funText(ctx,R.k.length>=3?"×"+funFmt(mu):"racha",-w/2+28,-1,C.amber,C,R.k.length>=3?15:12);
+    ctx.font="600 11px 'Alegreya Sans',sans-serif";ctx.textAlign="left";ctx.fillStyle=C.paper;ctx.fillText(R.k.map(k=>FUK[k]||k).join(" · "),-w/2+54,-1,w-64);
+    ctx.fillStyle="rgba("+C.amberR+",.9)";ctx.fillRect(-w/2+14,9,(w-28)*clamp(R.t/6,0,1),2.5)}
+  ctx.restore()}
+queueMicrotask(()=>{const N=window.__nube;if(!N)return;N.fun={get ev(){return FUN.ev},get jets(){return FUN.jets},get R(){return FUN.R},get storm(){return FUN.st},stF,FUN,
+  jetNear(x,y){let b=null;for(const j of FUN.jets){if(funFade(j)<.4)continue;const o=funNear(j,x,y);if(o&&(!b||o.d<b.d))b={j,d:o.d,s:o.s,cx:o.cx,cy:o.cy,tx:o.tx,ty:o.ty}}return b},jetAt,
+  start(k){const e=funEvMk(k);if(e){FUN.ev=e;FUN.evLast=k}return e},jet(strong){const j=funJetMk(!!strong);if(j)FUN.jets.push(j);return j}}});
+
 /* ---------- Acciones ---------- */
 function toggleRain(){if(P.rain)stopRain();else if(fm().noRain)floats.push({x:P.x,y:P.y-alt(),t:2,txt:"demasiado alta para llover",bad:1});else if(P.w>1){P.rain=true;P.streak=0}}
 function stopRain(){if(!P.rain)return;P.rain=false;if(P.streak>=4&&dark<.5){rainbow={x:P.x,y:P.y,t:10};unlock("arcoiris")}P.streak=0}
@@ -2231,6 +2561,7 @@ function update(dt){
   for(const dr of drops){if(dr.h>0)dr.h-=dt*(dr.snow?150:520);else dr.s+=dt}
   drops=drops.filter(d=>d.s<(d.snow?1.2:.25));
   if(!camp.fire){camp.t-=dt;if(camp.t<=0)camp.fire=1}
+  funUpdate(dt,z,Rd,A,C);
   // tamaño, tormenta, cima
   if(P.m>=5)unlock("grande");if(P.m>=12)unlock("gigante");if(P.m>=25)unlock("super");if(stormy())unlock("tormenta");
   P.cool=Math.max(0,P.cool-dt);flash=Math.max(0,flash-dt*1.6);cityOff=Math.max(0,cityOff-dt);
@@ -2717,6 +3048,7 @@ function draw(dt){
   ctx.globalAlpha=1;for(const s of shots){glow(GE,s.x,s.y,22);glow(GA,s.x,s.y,10)}
   for(const s of sparks){ctx.globalAlpha=Math.min(1,s.t*3);glow(GA,s.x,s.y,8)}
   ctx.globalCompositeOperation="source-over";ctx.globalAlpha=1;
+  funDraw();
   // viento visible
   const wa=clamp(WSP/70,.15,1);ctx.strokeStyle="rgba(235,240,235,1)";ctx.lineWidth=1.5;
   for(const s of streaks){const [sx,sy]=windAt(s.x,s.y);ctx.globalAlpha=Math.sin(clamp(s.l/1.6,0,1)*Math.PI)*.3*wa;ctx.beginPath();ctx.moveTo(s.x,s.y);ctx.lineTo(s.x-sx*.3,s.y-sy*.3);ctx.stroke()}
