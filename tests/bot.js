@@ -4,7 +4,9 @@
 // pantalla, a veces deambula, bebe tarde y huye tarde: se parece más a alguien que empieza.
 // No es una prueba que falle: imprime una tabla para ajustar números (experiencia, evaporación,
 // rivales, avioneta…). Se mueve hacia vapor y nubes, bebe con poca agua, riega campos sembrados,
-// huye de rivales grandes, esquiva la avioneta, lanza rayos y elige mejoras.
+// huye de rivales grandes, esquiva la avioneta, lanza rayos y elige mejoras. También va a por los
+// sucesos que avisan en el borde (frente de nubes, fuego, banco de vapor, rival herida), se sube a las
+// corrientes de viento que le pasan cerca y, cargada de tormenta, se pone a llover para desatarla.
 // Con BOT_HTML=/ruta/a/otra/index.html se puede medir otra versión del juego (p. ej. la anterior).
 const { chromium } = require("playwright");
 const path = require("path");
@@ -89,6 +91,8 @@ const MIN = +(process.argv[2] || 25), SEED = +(process.argv[3] || 1), NOVATO = p
           B.drinking = true; setRain(false); let best = WATERS[0], bd = 1e9;
           for (const w of WATERS) { const k = d(w[0], w[1], P.x, P.y); if (k < bd) { bd = k; best = w; } }
           const cy = N.coastY(P.x); if (cy - P.y < bd) best = [P.x, cy + 200];
+          // un banco de vapor a mano, de camino: se lo bebe antes
+          const be = N.fun && N.fun.ev; if (be && be.k === "banco" && be.ms.length && d(be.x, be.y, P.x, P.y) < 800) { let md = 1e9; for (const m of be.ms) { const k = d(m.x, m.y, P.x, P.y); if (k < md) { md = k; best = [m.x, m.y]; } } }
           P.tx = best[0]; P.ty = best[1]; return "beber"; }
         B.drinking = false;
         // 4) misiones que piden ir a un sitio: mojar gente, llover en pueblo/ciudad/puerto, espantar cuervos
@@ -111,9 +115,24 @@ const MIN = +(process.argv[2] || 25), SEED = +(process.argv[3] || 1), NOVATO = p
         const f = N.fields.find(f => f.st === 1 && (!B.nov || d(f.x + f.w / 2, f.y + f.h / 2, P.x, P.y) < 2500));
         if (f && P.w > C * .45) { const fx = f.x + f.w / 2, fy = f.y + f.h / 2; P.tx = fx; P.ty = fy;
           if (d(fx, fy, P.x, P.y) < 220) setRain(true); else setRain(false); return "regar"; }
-        // a4: llover un rato donde sea
+        // 5b) sucesos con aviso en el borde: el novato no siempre se anima a ir
+        const F = N.fun, e = F && F.ev;
+        if (e && !e.botSeen) { e.botSeen = 1; B.evGo = !B.nov || Math.random() < .75; }
+        if (e && B.evGo && P.w > C * .15) {
+          let gx = null, gy = null, wet = false;
+          if (e.k === "frente") { let bd = 1e9; for (const c of e.cl) { if (c.fl) continue; const k = d(c.x, c.y, P.x, P.y); if (k < bd) { bd = k; gx = c.x + e.ca * e.v * Math.min(3, k / 180); gy = c.y + e.sa * e.v * Math.min(3, k / 180); } } }
+          else if (e.k === "banco") { let bd = 1e9; for (const m of e.ms) { const k = d(m.x, m.y, P.x, P.y); if (k < bd) { bd = k; gx = m.x; gy = m.y; } } }
+          else if (e.k === "herida") { gx = e.c.x; gy = e.c.y; }
+          else if (e.k === "fuego" && P.w > C * .25) { let bd = 1e9; for (const t of e.grp) { if (t.st !== 1) continue; const k = d(t.x, t.y, P.x, P.y); if (k < bd) { bd = k; gx = t.x; gy = t.y; } } wet = bd < 160; }
+          if (gx !== null) { P.tx = Math.max(40, Math.min(10360, gx)); P.ty = Math.max(40, Math.min(7560, gy)); setRain(wet); return "suceso"; }
+        }
+        // a4: llover un rato donde sea; con carga de tormenta, llover para desatarla
         if (N.curCap() === 1 && !S.mis.a4 && P.w > C * .5) { setRain(true); }
-        else setRain(false);
+        else if (stormy() && P.m >= 5 && P.w > C * (B.storming ? .4 : .75)) { B.storming = 1; setRain(true); }
+        else { B.storming = 0; setRain(false); }
+        // 5c) una corriente de viento muy cerca: subirse y dejarse llevar
+        const jn = F && F.jetNear(P.x, P.y);
+        if (jn && jn.d < (B.nov ? 600 : 800) && !jn.j.paid && !jn.j.botDone && jn.s < jn.j.L - 500) { if (jn.s > jn.j.L - 900) jn.j.botDone = 1; const q = F.jetAt(jn.j, Math.min(jn.j.L, jn.s + 700), 0); P.tx = Math.max(40, Math.min(10360, q[0])); P.ty = Math.max(40, Math.min(7560, q[1])); return "corriente"; }
         // 6) lo más rentable cerca: nubes, rivales pequeños, vapor
         if (B.nov && B.wander && B.wander.t > B.t) { P.tx = B.wander.x; P.ty = B.wander.y; return "deambular"; }
         if (B.nov && Math.random() < .12) { const a = Math.random() * 6.28; B.wander = { x: Math.max(100, Math.min(10300, P.x + Math.cos(a) * 900)), y: Math.max(100, Math.min(7500, P.y + Math.sin(a) * 900)), t: B.t + 6 }; return "deambular"; }
@@ -134,7 +153,8 @@ const MIN = +(process.argv[2] || 25), SEED = +(process.argv[3] || 1), NOVATO = p
         B.t += dt;
         // medidas
         const xp1 = totXp();
-        if (xp1 - xp0 >= 5) { const g = B.t - B.lastEvt; if (g > 20) B.gaps.push(Math.round(g)); B.longGap = Math.max(B.longGap, g); B.lastEvt = B.t; }
+        B.gm = B.gm || {}; B.gm[B.mode] = (B.gm[B.mode] || 0) + dt;
+        if (xp1 - xp0 >= 5) { const g = B.t - B.lastEvt; if (g > 20) { B.gaps.push(Math.round(g)); const top = Object.entries(B.gm).sort((a, b) => b[1] - a[1])[0]; B.gapWhy = B.gapWhy || {}; B.gapWhy[top[0]] = (B.gapWhy[top[0]] || 0) + 1; } B.longGap = Math.max(B.longGap, g); B.lastEvt = B.t; B.gm = {}; }
         if (S.lvl !== B.lvSeen) { for (let l = B.lvSeen + 1; l <= S.lvl; l++) B.lv.push([l, Math.round(B.t)]); B.lvSeen = S.lvl; }
         B.misT = B.misT || {}; for (const k in S.mis) if (!(k in B.misT)) B.misT[k] = Math.round(B.t);
         const c = N.curCap(); if (c !== B.capSeen) { B.cap.push([B.capSeen, Math.round(B.t)]); B.capSeen = c; }
@@ -156,7 +176,7 @@ const MIN = +(process.argv[2] || 25), SEED = +(process.argv[3] || 1), NOVATO = p
     result.push(snap);
   }
   const avisos = await page.evaluate(() => window.__nube.rl ? window.__nube.rl.log : null);
-  const B = await page.evaluate(() => { const B = window.__bot, J = window.__nube.save.jug; B.dodge = J ? J.dodge : "?"; B.tips = J ? Object.keys(J.tips).join(", ") + " (seguidos: " + J.ok + ")" : "?"; return B; });
+  const B = await page.evaluate(() => { const B = window.__bot, J = window.__nube.save.jug, F = window.__nube.fun; B.dodge = J ? J.dodge : "?"; B.fun = F ? F.FUN.log : null; B.karma = window.__nube.save.karma; B.motes = window.__nube.save.motes; B.tips = J ? Object.keys(J.tips).join(", ") + " (seguidos: " + J.ok + ")" : "?"; return B; });
   const pend = await page.evaluate(() => { const N = window.__nube, c = N.curCap(); return N.MIS.filter(m => m[0] === c && !N.save.mis[m[1]]).map(m => m[1] + " " + m[2] + " (" + Math.floor(m[3]()) + "/" + m[4] + ")"); });
   await browser.close();
 
@@ -172,8 +192,11 @@ const MIN = +(process.argv[2] || 25), SEED = +(process.argv[3] || 1), NOVATO = p
   console.log("Evaporaciones: " + B.evap + " · veces que encoge: " + B.shrink + " · tamaño perdido por causa: " + JSON.stringify(B.why || {}) + " · segundos sin agua: " + Math.round(B.dryT));
   console.log("Encuentros con rivales más grandes (a menos de 900): " + (B.enc || 0) + " · tiempo huyendo (s): " + Math.round(B.bigNear) + " · avionetas: " + B.planes + " (le dieron " + B.planeHits + ", esquivadas " + B.dodge + ")");
   console.log("Huecos >20 s sin nada notable: " + B.gaps.length + " " + JSON.stringify(B.gaps) + " · el más largo: " + Math.round(B.longGap) + " s");
+  console.log("Qué hacía el bot en cada hueco (lo que más tiempo ocupó): " + JSON.stringify(B.gapWhy || {}));
   console.log("Reparto del tiempo del bot (s): " + JSON.stringify(Object.fromEntries(Object.entries(B.modes).map(([k, v]) => [k, Math.round(v)]))));
   console.log("Consejos mostrados: " + B.tips);
+  console.log("Reputación al final: " + B.karma + " · motas de vapor recogidas: " + B.motes);
+  if (B.fun) console.log("Diversión (experiencia por fuente y número de veces, n:/ok:/no:): " + JSON.stringify(B.fun));
   console.log("Misiones (id@segundo): " + Object.entries(B.misT || {}).map(([k, v]) => k + "@" + v).join(" "));
   console.log("Misiones pendientes del capítulo actual: " + (pend.join(" · ") || "ninguna"));
   if (errors.length) { console.error("Errores de JavaScript:\n- " + errors.join("\n- ")); process.exit(1); }
