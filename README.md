@@ -27,7 +27,11 @@ R granizo, F niebla densa, G nevada, Esc o P pausa.
 - Nubes rivales, avioneta siembranubes y cañones antinube si te ganas mala fama.
 - Un valle con ciudad, pueblo, granja, bosque, montañas, puerto, isla secreta, embalse, aeródromo,
   feria, playa, viñedo y un valle escondido; 20 gotas doradas y eventos con horario.
-- Día y noche, cuatro estaciones, viento que manda y más de 150 logros.
+- Corrientes de viento que se surfean, sucesos cerca de ti que caducan, rachas y tormenta desatada.
+- Ciudad con edificios con volumen, semáforos y tráfico; pueblo, puerto y naturaleza que cambian
+  con las estaciones.
+- Día y noche, cuatro estaciones y 111 logros (con medallas, compuestos y secretos) que salen con
+  calma, más un cuaderno de pequeños momentos.
 
 ## Publicarlo en GitHub Pages
 

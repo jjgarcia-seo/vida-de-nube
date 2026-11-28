@@ -400,7 +400,7 @@ h1{font-family:var(--display);font-weight:800;font-size:clamp(34px,7vw,52px);lin
 
   <div class="overlay" id="intro">
     <div class="card">
-      <p class="eyebrow">Versión 7 · historia, jefas y lugares nuevos</p>
+      <p class="eyebrow">Versión 8 · ciudad nueva, corrientes y logros con medallas</p>
       <h1>Vida de Nube</h1>
       <p>Eres una nube pequeña sobre un valle enorme. <b>Toca el mapa o usa el joystick</b> para flotar (se cambia en Ajustes, también desde la pausa). Arriba a la izquierda tienes siempre tus <b>misiones</b>: ellas te dicen qué hacer.</p>
       <p><b>Bebe</b> sobre el lago, el río o el mar. <b>Crece</b> fundiéndote con otras nubes. <b>Llueve</b> donde quieras y mira qué pasa abajo. La sombra en el suelo marca dónde cae tu lluvia.</p>
@@ -1520,7 +1520,7 @@ const UPS={
   rayo:{n:"Rayo",d:"Acción nueva: lanzar rayos con tamaño 3. Cada nivel abarata y refuerza.",max:4,min:3,act:1},
   tornado:{n:"Tornado",d:"Acción nueva: desatar un tornado con tamaño 6. Cada nivel lo alarga.",max:3,min:7,act:1}
 };
-const NEED=[60,100,150,210,280,360,450,550,660,780];
+const NEED=[90,150,190,230,290,360,450,550,660,780];
 const need=l=>NEED[l-1]||780+130*(l-10);
 let pendLv=save.pts||0,paused=false,combo=0,comboT=0;
 function gain(n,x,y){if(!started)return;if(save.karma>=15)n*=1.25;n=Math.round(n);save.xp+=n;

@@ -1,6 +1,6 @@
 {
   "name": "vida-de-nube",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "private": true,
   "description": "Juego web: eres una nube sobre un valle enorme.",
   "scripts": {

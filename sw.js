@@ -1,6 +1,6 @@
 // Guarda el juego en el móvil para poder jugar sin conexión.
 // Sube VERSION cada vez que publiques cambios para que los jugadores reciban la versión nueva.
-const VERSION = "vida-de-nube-v7";
+const VERSION = "vida-de-nube-v8";
 const FILES = ["./", "index.html", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png"];
 
 self.addEventListener("install", e => {

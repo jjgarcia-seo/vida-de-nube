@@ -35,6 +35,13 @@ Busca estos comentarios `/* ---------- … ---------- */` dentro del `<script>`:
   flecha de objetivo y favores de los vecinos.
 - **Animación** (`AN`, `anim*`, `draw*` auxiliares): nube viva, lluvia, gente, árboles y cielo.
 - **Jugabilidad** (`jug*`, estado `save.jug`): consejos de los primeros minutos y menú de pausa.
+- **Ritmo de logros** (`rl*`, estado `save.rl`): pequeños momentos, logros compuestos, con niveles y
+  secretos, y avisos agrupados (como mucho uno cada 50 s). Para logros nuevos, revisa esta sección.
+- **Diversión** (`fun*`, estado `save.fun`): corrientes de viento, sucesos, rachas, maniobras,
+  tormenta desatada y el director de ritmo.
+- **Ciudad y pueblo** (`URB`, `urb*`): edificios, calles, tráfico, pueblo y puerto. Lo fijo se pinta
+  en el suelo cacheado.
+- **Naturaleza** (`nat*`): terreno por estaciones, agua, bosques, montañas y campos.
 
 Cada módulo guarda su estado con una función `stX()` que crea su objeto en `save` si falta, así
 no hace falta tocar `fresh()`. Los logros nuevos se añaden con `ACH.push(...)` dentro del módulo.
